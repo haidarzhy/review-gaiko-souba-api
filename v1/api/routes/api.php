@@ -71,6 +71,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/settings/{id}/update', 'App\Http\Controllers\SettingController@update');
 
     // DASHBOARD API
+    Route::get('/dashboard', 'App\Http\Controllers\DashboardController@index');
 
 });
 
