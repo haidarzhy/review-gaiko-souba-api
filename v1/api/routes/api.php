@@ -70,6 +70,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/settings', 'App\Http\Controllers\SettingController@index');
     Route::post('/settings/{id}/update', 'App\Http\Controllers\SettingController@update');
 
+    // DASHBOARD API
+
 });
 
 // AUTH
