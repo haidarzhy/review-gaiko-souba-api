@@ -94,24 +94,13 @@ Route::post('/contact/store', 'App\Http\Controllers\ContactController@store');
 
 // QUESTIONNAIRE API
 Route::get('/u/questionnaires', 'App\Http\Controllers\QuestionnaireController@uIndex');
+Route::post('/u/questionnaires/calculate', 'App\Http\Controllers\QuestionnaireController@uCalculate');
+Route::post('/u/questionnaires/store', 'App\Http\Controllers\QuestionnaireController@uStore');
 
 
 // Route::get('/test', function (Request $request) {
 //     return Hash::make('mYgG#85y5KV@');
 // });
-
-function formatSizeUnits($bytes)
-{
-    $units = ['B', 'KB', 'MB', 'GB', 'TB'];
-    $index = 0;
-
-    while ($bytes >= 1024 && $index < 4) {
-        $bytes /= 1024;
-        $index++;
-    }
-
-    return round($bytes, 2) . ' ' . $units[$index];
-}
 
 Route::get('/test', function (Request $request) {
 
@@ -130,41 +119,6 @@ Route::get('/test', function (Request $request) {
     // $m = mail($recipientEmail, $subject, $mailContent, $headers);
 
     // return $m;
-    // $s = '/Applications/XAMPP/xamppfiles/htdocs/gaiko-souba-api/v1/api/public/questionnaire/ans/choices/20230601-64789e3e1bede.png';
-    // return 'public'.str_replace(public_path(''), '', $s);
-
-
-    // $currentPath = App::basePath();
-
-    // $finder = new Finder();
-    // $finder->files()->in($currentPath);
-
-    // $totalSize = 0;
-
-    // foreach ($finder as $file) {
-    //     $totalSize += $file->getSize();
-    // }
-
-    // $humanReadableSize = formatSizeUnits($totalSize);
-    // return $humanReadableSize;
-
-    $cachePath = storage_path('framework/cache');
-    if (!File::exists($cachePath)) {
-        // Handle the case when cache directory doesn't exist
-        return 'Cache directory not found';
-    }
-
-    $finder = new Finder();
-    $finder->files()->in($cachePath);
-
-    $totalSize = 0;
-
-    foreach ($finder as $file) {
-        $totalSize += $file->getSize();
-    }
-
-    $humanReadableSize = formatSizeUnits($totalSize);
-    return $humanReadableSize;
 
 });
 

@@ -4,7 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-class CreateMeasuresTable extends Migration
+class CreateQaudsTable extends Migration
 {
     /**
      * Run the migrations.
@@ -13,12 +13,14 @@ class CreateMeasuresTable extends Migration
      */
     public function up()
     {
-        Schema::create('measures', function (Blueprint $table) {
+        Schema::create('qauds', function (Blueprint $table) {
             $table->id();
-            $table->string('type')->nullable();
-            $table->boolean('status');
-            $table->integer('order');
+            $table->string('quantity')->nullable();
+            $table->string('unit_price')->nullable();
+            $table->unsignedBigInteger('qa_id')->nullable();
             $table->timestamps();
+
+            $table->foreign('qa_id')->references('id')->on('qas')->onUpdate('cascade')->onDelete('cascade');
         });
     }
 
@@ -29,6 +31,6 @@ class CreateMeasuresTable extends Migration
      */
     public function down()
     {
-        Schema::dropIfExists('measures');
+        Schema::dropIfExists('qauds');
     }
 }

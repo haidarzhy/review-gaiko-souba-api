@@ -6,7 +6,6 @@ use Exception;
 use App\Models\Qa;
 use App\Models\Qq;
 use Carbon\Carbon;
-use App\Models\Measure;
 use Illuminate\Http\Request;
 use App\Models\QAnsInputType;
 use Illuminate\Database\QueryException;
@@ -62,6 +61,127 @@ class QuestionnaireController extends Controller
     public function store(Request $request)
     {
         return response()->json($this->createQuestionnaire($request, 'store', null));
+
+    }
+
+    public function uCalculate(Request $request)
+    {
+        $total = 0;
+        $calculatedArray = [];
+        $data = $request->all();
+        if(count($data) > 0) {
+            for ($i = 0; $i < count($data); $i++) { 
+                // $q = Qq::join('Qa', 'Qq.id', '=', 'Qa.qId')
+                //     ->where('Qq.id', $data[$i]['qId'])
+                //     ->where('Qa.id', $data[$i]['ansId'])
+                //     ->first();
+                $q = Qq::where('id', $data[$i]['qId'])->first();
+                if($q && $q->qAnsInputType->input == 'text') {
+                    if(isset($q->qas[0])) {
+                        $dumpTextObj = null;
+                        if(isset($q->qas[0]->measure)) {
+                            $dumpTextObj = [
+                                'summary' => $q->q,
+                                'quantity' => $data[$i]['ansId'],
+                                'unit_price' => 0,
+                                'amount' => 0
+                            ];
+                            // measure input
+                            if($q->qas[0]->amount != null) {
+                                // amount defined
+                                $dumpTextObj['unit_price'] = $q->qas[0]->amount;
+                                $dumpTextObj['amount'] = $data[$i]['ansId'] * $q->qas[0]->amount;
+                                $total += $dumpTextObj['amount'];
+                            }
+                        } else {
+                            $dumpTextObj = [
+                                'summary' => $data[$i]['ansId'],
+                                'quantity' => 0,
+                                'unit_price' => 0,
+                                'amount' => 0
+                            ];
+                            // free input
+                            if($q->qas[0]->amount != null) {
+                                // amount defined
+                                $total += $q->qas[0]->amount;
+                            }
+                        }
+                        array_push($calculatedArray, $dumpTextObj);
+                    }
+                } else if($q && $q->qAnsInputType->input == 'select') {
+                    if(isset($q->qas[0])) {
+                        $dumpSelectObj = null;
+                        if($q->qas[0]->amount != null) {
+                            // amount defined
+                            $dumpTextObj = [
+                                'summary' => $q->q,
+                                'quantity' => $q->qas[0]->label,
+                                'unit_price' => '-',
+                                'amount' => $q->qas[0]->amount
+                            ];
+                        }
+                    }
+                } else if($q && $q->qAnsInputType->input == 'radio') {
+
+                } else if($q && $q->qAnsInputType->input == 'checkbox') {
+
+                }
+                // if(is_array($data[$i]['ansId'])) {
+                //     // multiple answers
+                //     for ($j = 0; $j < count($data[$i]['ansId']); $j++) { 
+                //         $ans = Qa::where('id', $data[$i]['ansId'][$j])->first();
+                //         if($ans) {
+                //             return response()->json([
+                //                 'ans' => $ans,
+                //                 'q' => $ans->qq
+                //             ]);
+                //         }
+                //     }
+                // } else {
+                //     // single answer
+                //     $ans = Qa::where('id', $data[$i]['ansId'])->first();
+                //     if($ans) {
+                //         return response()->json([
+                //             'ans' => $ans,
+                //             'q' => $ans->qq
+                //         ]);
+                //     } else {
+                //         // not found answer might be input text
+
+                //     }
+                // }
+            }
+        }
+        return response()->json([
+            'array' => $calculatedArray,
+            'total' => $total
+        ]);
+    }
+
+    /**
+     * Store a newly created resource in storage.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\Response
+     */
+    public function uStore(Request $request)
+    {
+        $data = $request->all();
+        if(isset($data['textInputValues']) && count($data['textInputValues']) > 0) {
+            // text answers were including in answers
+
+        } else if(isset($data['selectInputValues']) && count($data['selectInputValues']) > 0) {
+            // select answers were including in answers
+            foreach($data['selectInputValues'] as $sInput) {
+
+            }
+        } else if(isset($data['choiceInputValues']) && count($data['choiceInputValues']) > 0) {
+            // choice answers were including in answers
+            
+        } else {
+            return response()->json(0);
+        }
+        return response()->json($data);
 
     }
 
@@ -236,6 +356,7 @@ class QuestionnaireController extends Controller
                                 array_push($dumpInputSelectData, $dumpSi);
                             }
                         }
+
 
                         if(count($dumpInputSelectData) > 0) {
                             // store answer
