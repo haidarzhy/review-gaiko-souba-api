@@ -126,7 +126,7 @@
             <p class="align-left">ご質問やご不明な点がございましたら、info@gaiko-souba.net または 050-3825-7567 まで<br>お気軽にお問い合わせください。</p>
         
             <div class="contact-address align-left">
-                <p>一番、
+                <p>
                     <br>外構相場.com
                     <br>info@gaiko-souba.net
                     <br>050-3825-7567
