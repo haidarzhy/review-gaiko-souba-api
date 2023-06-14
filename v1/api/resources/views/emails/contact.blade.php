@@ -1,7 +1,8 @@
+
 <!DOCTYPE html>
 <html>
 <head>
-    <title>おめでとう！ 登録が確認されました！</title>
+    <title>この度は、お問い合わせいただき誠にありがとうございます</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <meta name="robots" content="noindex, nofollow">
@@ -51,9 +52,9 @@
             letter-spacing: 0.1em;
         }
         .mail-wrap-inn .button {
-            margin: 40px 0;
-            padding-bottom: 40px;
-            border-bottom: 1px solid #E0E0E0;
+            margin: 40px 0 0;
+            padding-top: 40px;
+            border-top: 1px solid #E0E0E0;
         }
         .mail-wrap-inn .button a {
             text-decoration: none;
@@ -71,17 +72,11 @@
             background: #FF7533;
             border: 1px solid #FF7533;
         }
-        .contact-address {
-            margin-top: 40px;
-        }
         .mail-wrap-inn .pc {
             display: block;
         }
         .mail-wrap-inn .sp {
             display: none;
-        }
-        .align-left {
-            text-align: left;
         }
         /* for media SP query 768 */
         @media screen and (max-width: 768px) {
@@ -111,29 +106,11 @@
     <div class="mail-wrap">
         <div class="mail-wrap-inn">
             <h2>こんにちは、{{ $name }}様！</h2>
-            <h3>おめでとうございます！ <br class="sp">登録が確認されました！</h3>
-            <p>
-                外構相場.comへの登録が完了しました。<br>
-                これで、ログイン画面にアクセスして<br class="sp">注文のリストを確認できる<br class="sp">ようになりました。<br>
-                登録したメールアドレスとパスワードを<br class="sp">使用してログイン画面に<br class="sp">アクセスしてください。
-            </p>
+            <h3>送信完了しました。</h3>
+            <p>この度は、お問い合わせいただき誠にありがとうございます。<br>
+                2営業日以内に、担当者からお返事いたします。</p>
             <div class="button">
-                <a href="https://gaiko-souba-net.icdl.tokyo/sign-in" rel="noopener noreferrer" target="_blank">ログイン画面にアクセスする</a>
-            </div>
-            <h3>これがあなたの加入プランです。</h3>
-            <p>タイプ - {{ $plan }}</p>
-            <p>お支払い - {{ $price }}</p>
-            <p class="align-left">ご質問やご不明な点がございましたら、info@gaiko-souba.net または 050-3825-7567 まで<br>お気軽にお問い合わせください。</p>
-        
-            <div class="contact-address align-left">
-                <p>一番、
-                    <br>外構相場.com
-                    <br>info@gaiko-souba.net
-                    <br>050-3825-7567
-                    <br>〒491-0827 
-                    <br>愛知県 一宮市
-                    <br>三ツ井4丁目16番15号
-                </p>
+                <a href="https://gaiko-souba-net.icdl.tokyo/" rel="noopener noreferrer" target="_blank">ホームへ戻る</a>
             </div>
         </div>
     </div>

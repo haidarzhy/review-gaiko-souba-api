@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use GuzzleHttp\Client;
 use App\Models\Contact;
+use App\Mail\ContactEmail;
 use Illuminate\Http\Request;
 use Illuminate\Database\QueryException;
 
@@ -95,6 +96,20 @@ class ContactController extends Controller
 
         $contact = Contact::create($contactData);
         if($contact) {
+            $mailData = [
+                'name' => $contact->name,
+            ];
+
+            $mail = new ContactEmail($mailData);
+            $mailContent = $mail->render();
+            $subject = 'ご連絡いただきありがとうございます';
+            $recipientEmail = $contact->email;
+
+            $headers = "MIME-Version: 1.0" . "\r\n";
+            $headers .= "Content-type:text/html;charset=UTF-8" . "\r\n";
+            $headers .= "From: 外構相場.com <info@gaiko-souba.net>" . "\r\n";
+
+            $m = mail($recipientEmail, $subject, $mailContent, $headers);
             return response()->json(1);
         } else {
             return response()->json(0);
