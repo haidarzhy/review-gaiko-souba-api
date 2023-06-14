@@ -38,7 +38,8 @@ class AuthController extends Controller
         }
         // example card - 4444333322221111
         $cardData = [
-            'aid' => 126030,
+            // 'aid' => 126030, // test account
+            'aid' => 125562, // production account
             'rt' => 1,
             'cod' => '',
             'em' => $data['email'],
