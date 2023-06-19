@@ -20,7 +20,6 @@ class CreateQasTable extends Migration
             $table->text('image')->nullable();
             $table->string('quantity')->nullable();
             $table->string('unit_price')->nullable();
-            $table->boolean('use_default')->default(0);
             $table->unsignedBigInteger('qq_id')->nullable();
             $table->unsignedBigInteger('q_ans_input_type_id')->nullable();
             $table->boolean('status');

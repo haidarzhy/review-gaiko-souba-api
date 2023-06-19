@@ -107,33 +107,33 @@ class SettingController extends Controller
             $currentDate = Carbon::now()->format('Ymd');
             if($request->hasFile('site_logo')) {
 
-                $directory = public_path('/setting/logo');
+                $directory = public_path(config('app.upload_path').'/setting/logo');
                 $files = glob($directory . '/*');
                 foreach ($files as $file) {
                     unlink($file); // Delete the image file
                 }
 
                 $file = $request->file('site_logo');
-                $path = 'setting/logo';
+                $path = config('app.upload_folder').'/setting/logo';
                 if (!Storage::exists($path)) {
                     Storage::makeDirectory($path);
                 }
                 $fileExtension = $file->getClientOriginalExtension();
                 $newFileName = $currentDate .'-'.uniqid().'.' . $fileExtension;
                 $storedPath = Storage::disk('public')->putFileAs($path, $file, $newFileName);
-                $updateData['site_logo'] = 'public/'.$storedPath;
+                $updateData['site_logo'] = $storedPath;
             } 
             
             if($request->hasFile('icon')) {
 
-                $directory = public_path('/setting/icon');
+                $directory = public_path(config('app.upload_path').'/setting/icon');
                 $files = glob($directory . '/*');
                 foreach ($files as $file) {
                     unlink($file); // Delete the image file
                 }
 
                 $file = $request->file('icon');
-                $path = 'setting/icon';
+                $path = config('app.upload_folder').'/setting/icon';
                 if (!Storage::exists($path)) {
                     Storage::makeDirectory($path);
                 }
@@ -141,7 +141,7 @@ class SettingController extends Controller
                 $fileExtension = $file->getClientOriginalExtension();
                 $newFileName = $currentDate .'-'.uniqid().'.' . $fileExtension;
                 $storedPath = Storage::disk('public')->putFileAs($path, $file, $newFileName);
-                $updateData['icon'] = 'public/'.$storedPath;
+                $updateData['icon'] = $storedPath;
             } 
 
             // get site size and cache size
@@ -195,21 +195,21 @@ class SettingController extends Controller
             $currentDate = Carbon::now()->format('Ymd');
             if($request->hasFile('image')) {
 
-                $directory = public_path('/setting/seo');
+                $directory = public_path(config('app.upload_path').'/setting/seo');
                 $files = glob($directory . '/*');
                 foreach ($files as $file) {
                     unlink($file); // Delete the image file
                 }
 
                 $file = $request->file('image');
-                $path = 'setting/seo';
+                $path = config('app.upload_folder').'/setting/seo';
                 if (!Storage::exists($path)) {
                     Storage::makeDirectory($path);
                 }
                 $fileExtension = $file->getClientOriginalExtension();
                 $newFileName = $currentDate .'-'.uniqid().'.' . $fileExtension;
                 $storedPath = Storage::disk('public')->putFileAs($path, $file, $newFileName);
-                $updateData['og_image'] = 'public/'.$storedPath;
+                $updateData['og_image'] = $storedPath;
             } 
 
             $res = Seo::updateOrCreate(['id' => 1], $updateData);
@@ -232,5 +232,16 @@ class SettingController extends Controller
     public function destroy($id)
     {
         //
+    }
+
+
+    public function getHead()
+    {
+        $settings = Setting::first();
+        $seos = Seo::first();
+        return response()->json([
+            'setting' => $settings,
+            'seo' => $seos
+        ]);
     }
 }

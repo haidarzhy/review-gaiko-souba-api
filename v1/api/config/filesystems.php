@@ -32,13 +32,13 @@ return [
 
         'local' => [
             'driver' => 'local',
-            'root' => storage_path('app'),
+            'root' => '/Applications/XAMPP/xamppfiles/htdocs/gaiko-souba-api',
         ],
 
         'public' => [
             'driver' => 'local',
-            'root' => public_path(),
-            'url' => env('APP_URL').'/',
+            'root' => '/Applications/XAMPP/xamppfiles/htdocs/gaiko-souba-api',
+            'url' => env('APP_URL').'/storage',
             'visibility' => 'public',
         ],
 

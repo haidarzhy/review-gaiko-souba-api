@@ -31,7 +31,7 @@ class QuestionnaireController extends Controller
      */
     public function uIndex()
     {
-        $qs = Qq::where('status', 1)->with(['qAnsInputType', 'qasWithAll'])->orderBy('id', 'asc')->get();
+        $qs = Qq::where('status', 1)->with(['qAnsInputType', 'qas'])->orderBy('id', 'asc')->get();
         if($qs && count($qs) > 0) {
             $qsWithIndex = $qs->map(function ($item, $index) {
                 $item['index'] = $index + 1; // Add the index column
@@ -71,10 +71,6 @@ class QuestionnaireController extends Controller
         $data = $request->all();
         if(count($data) > 0) {
             for ($i = 0; $i < count($data); $i++) { 
-                // $q = Qq::join('Qa', 'Qq.id', '=', 'Qa.qId')
-                //     ->where('Qq.id', $data[$i]['qId'])
-                //     ->where('Qa.id', $data[$i]['ansId'])
-                //     ->first();
                 $q = Qq::where('id', $data[$i]['qId'])->first();
                 if($q && $q->qAnsInputType->input == 'text') {
                     if(isset($q->qas[0])) {
@@ -193,7 +189,7 @@ class QuestionnaireController extends Controller
      */
     public function show($id)
     {
-        $q = Qq::where('id', $id)->with(['qAnsInputType', 'qasWithAll'])->first();
+        $q = Qq::where('id', $id)->with(['qAnsInputType', 'qas'])->first();
         if($q) {
             return response()->json($q);
         } else {
@@ -280,8 +276,10 @@ class QuestionnaireController extends Controller
                 // store question
                 $qq = Qq::create([
                     'q' => $data['question'],
-                    'prefix' => isset($data['prefix']) ? $data['prefix']:null,
+                    'suffix' => isset($data['suffix']) ? $data['suffix']:null,
                     'q_ans_input_type_id' => $inputType->id,
+                    'choice' => isset($data['choice']) ? $data['choice'] == '独身' ? 1:2 :'',
+                    'required' => isset($data['required']) && $data['required'] == "true" ? 1 : 0,
                     'status' => 1,
                     'order' => 1
                 ]);
@@ -291,11 +289,22 @@ class QuestionnaireController extends Controller
                 }
             } else if($mode == 'update') {
                 // update question
-                $qRes = Qq::where('id', $QID)->update([
+                $updateData = [
                     'q' => $data['question'],
-                    'prefix' => isset($data['prefix']) ? $data['prefix']:null,
+                    'suffix' => isset($data['suffix']) ? $data['suffix']:null,
+                    'choice' => isset($data['choice']) ? $data['choice'] == '独身' ? 1:2 :'',
                     'q_ans_input_type_id' => $inputType->id,
-                ]);
+                ];
+
+                if(isset($data['required'])) {
+                    if($data['required'] == "true") {
+                        $updateData['required'] = 1;
+                    } else {
+                        $updateData['required'] = 0;
+                    }
+                }
+
+                $qRes = Qq::where('id', $QID)->update($updateData);
                 if($qRes) {
                     $qq = Qq::find($QID);
                 } else {
@@ -308,26 +317,10 @@ class QuestionnaireController extends Controller
                     // input text
                     $dumpInputTextData = [
                         'qq_id' => $qq->id,
-                        'amount' => isset($data['textItems']['amount']) ? $data['textItems']['amount']:null,
+                        'suffix' => isset($data['textItems']['suffix']) ? $data['textItems']['suffix']:null,
                         'status' => 1,
                         'order' => 1
                     ];
-
-                    if($data['textItems']['textType'] == '自由入力') {
-                        $dumpInputTextData['suffix'] = isset($data['textItems']['label']) ? $data['textItems']['label']:null;
-                    } else if($data['textItems']['textType'] == '対策') {
-                        if(isset($data['textItems']['measure'])) {
-                            $measure = Measure::where('type', $data['textItems']['measure'])->first();
-                            if($measure) {
-                                $dumpInputTextData['suffix'] = $measure->type;
-                                $dumpInputTextData['measure_id'] = $measure->id;
-                            } else {
-                                return 0;
-                            }
-                        }
-                    } else {
-                        return 0;
-                    }
     
                     // store answer
                     $sa = Qa::create($dumpInputTextData);
@@ -346,7 +339,7 @@ class QuestionnaireController extends Controller
                             if(isset($si['label'])) {
                                 $dumpSi = [
                                     'label' => $si['label'],
-                                    'amount' => isset($si['amount']) ? $si['amount']:null,
+                                    'unit_price' => isset($si['unit_price']) ? $si['unit_price']:null,
                                     'qq_id' => $qq->id,
                                     'status' => 1,
                                     'order' => 1,
@@ -372,7 +365,7 @@ class QuestionnaireController extends Controller
                         return 1;
                     }
 
-                } else if($inputType && ($inputType->input == 'radio' || $inputType->input == 'checkbox') ) {
+                } else if($inputType && ($inputType->input == 'choice') ) {
                     // input choice
                     if(isset($data['choiceItems']) && count($data['choiceItems']) > 0) {
                         $dumpInputChoiceData = [];
@@ -381,7 +374,7 @@ class QuestionnaireController extends Controller
                             $ci = $data['choiceItems'][$i];
                             $dumpCi = [
                                 'label' => isset($ci['label']) ? $ci['label']:null,
-                                'amount' => isset($ci['amount']) ? $ci['amount']:null,
+                                'unit_price' => isset($ci['unit_price']) ? $ci['unit_price']:null,
                                 'qq_id' => $qq->id,
                                 'status' => 1,
                                 'order' => 1,
@@ -393,8 +386,7 @@ class QuestionnaireController extends Controller
                             $fileKey = 'choiceItems.'.$i.'.file';
                             if($request->hasFile($fileKey)) {
                                 $file = $request->file($fileKey);
-                                $path = 'questionnaire/ans/choices';
-
+                                $path = config('app.upload_folder').'/questionnaire/ans/choices';
                                 if (!Storage::exists($path)) {
                                     Storage::makeDirectory($path);
                                 }
@@ -403,9 +395,9 @@ class QuestionnaireController extends Controller
                                 $fileExtension = $file->getClientOriginalExtension();
                                 $newFileName = $currentDate .'-'.uniqid().'.' . $fileExtension;
                                 $storedPath = Storage::disk('public')->putFileAs($path, $file, $newFileName);
-                                $dumpCi['image'] = 'public/'.$storedPath;
+                                $dumpCi['image'] = $storedPath;
                             } else if(isset($ci['imagePath'])) {
-                                $pathImg = str_replace(url('/api').'/', '', $ci['imagePath']);
+                                $pathImg = str_replace(config('app.url').'/', '', $ci['imagePath']);
                                 $dumpCi['image'] = $pathImg;
                             }
 
@@ -418,10 +410,10 @@ class QuestionnaireController extends Controller
                             if($sa) {
                                 // delete unused images
                                 $databaseImages = Qa::where('image', '!=', null)->pluck('image')->all();
-                                $directory = public_path('/questionnaire/ans/choices');
+                                $directory = public_path(config('app.upload_path').'/questionnaire/ans/choices');
                                 $files = glob($directory . '/*');
                                 foreach ($files as $file) {
-                                    if (is_file($file) && !in_array('public'.str_replace(public_path(''), '', $file), $databaseImages)) {
+                                    if (is_file($file) && !in_array('uploads'.str_replace(public_path(config('app.upload_path')), '', $file), $databaseImages)) {
                                         unlink($file); // Delete the image file
                                     }
                                 }

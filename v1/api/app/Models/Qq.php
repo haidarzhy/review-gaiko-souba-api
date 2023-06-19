@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 class Qq extends Model
 {
     use HasFactory;
-    protected $fillable = ['q', 'prefix', 'q_ans_input_type_id', 'status', 'order'];
+    protected $fillable = ['q', 'suffix', 'q_ans_input_type_id', 'choice', 'required', 'status', 'order'];
 
     public function qas()
     {
@@ -20,11 +20,6 @@ class Qq extends Model
     public function qAnsInputType()
     {
         return $this->belongsTo(QAnsInputType::class);
-    }
-
-    public function qasWithAll()
-    {
-        return $this->hasMany(Qa::class)->with(['measure']);
     }
 
 }

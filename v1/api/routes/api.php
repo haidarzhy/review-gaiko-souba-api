@@ -75,6 +75,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
 });
 
+// HEAD
+Route::get('/head', 'App\Http\Controllers\SettingController@getHead');
+
 // AUTH
 Route::post('/register', 'App\Http\Controllers\AuthController@register');
 Route::post('/cp/sign-in', 'App\Http\Controllers\AuthController@signincp');
@@ -119,7 +122,16 @@ Route::get('/test', function (Request $request) {
     // $m = mail($recipientEmail, $subject, $mailContent, $headers);
 
     // return $m;
-
+    return config('app.upload_folder');
+    // $path = 'setting/logo';
+    //             try {
+    //                 if (!Storage::exists($path)) {
+    //                     Storage::makeDirectory($path);
+    //                 }
+    //             } catch (\Exception $e) {
+    //                 return response()->json($e->getMessage());
+    //             }
+    // return !Storage::exists($path);
 });
 
 Route::get('/clear-cache', function (Request $request) {
