@@ -67,8 +67,12 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::delete('/questionnaire/{id}/destroy', 'App\Http\Controllers\QuestionnaireController@destroy');
 
     // QUOTATION API
+    Route::get('/quotation', 'App\Http\Controllers\QuotationController@index');
     Route::get('/quotation/create', 'App\Http\Controllers\QuotationController@create');
     Route::post('/quotation/store', 'App\Http\Controllers\QuotationController@store');
+    Route::get('/quotation/{id}/detail', 'App\Http\Controllers\QuotationController@show');
+    Route::post('/quotation/{id}/update', 'App\Http\Controllers\QuotationController@update');
+    Route::delete('/quotation/{id}/destroy', 'App\Http\Controllers\QuotationController@destroy');
 
     // SETTING API
     Route::get('/settings', 'App\Http\Controllers\SettingController@index');

@@ -22,7 +22,8 @@ class QuotationController extends Controller
      */
     public function index()
     {
-        //
+        $qs = Quotation::orderBy('id', 'desc')->get();
+        return response()->json($qs);
     }
 
     /**
@@ -147,10 +148,7 @@ class QuotationController extends Controller
                 }
             }
 
-            return response()->json([
-                'data' => $data,
-                'quote' => $dumpStoreFCondition
-            ]);
+            return response()->json(1);
         } 
 
         return response()->json(0);
@@ -164,7 +162,7 @@ class QuotationController extends Controller
      */
     public function show($id)
     {
-        //
+        return response()->json(0);
     }
 
     /**
@@ -175,7 +173,7 @@ class QuotationController extends Controller
      */
     public function edit($id)
     {
-        //
+        return response()->json(0);
     }
 
     /**
@@ -187,7 +185,7 @@ class QuotationController extends Controller
      */
     public function update(Request $request, $id)
     {
-        //
+        return response()->json(0);
     }
 
     /**
@@ -198,6 +196,12 @@ class QuotationController extends Controller
      */
     public function destroy($id)
     {
-        //
+        $data = Quotation::find($id);
+        if($data) {
+            $data->delete();
+            return response()->json(1);
+        } else {
+            return response()->json(0);
+        }
     }
 }
