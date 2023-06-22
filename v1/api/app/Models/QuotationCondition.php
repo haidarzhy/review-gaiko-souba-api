@@ -8,5 +8,5 @@ use Illuminate\Database\Eloquent\Model;
 class QuotationCondition extends Model
 {
     use HasFactory;
-    protected $fillable = ['qq_id', 'math_symbol_id', 'qa_id', 'quotation_id'];
+    protected $fillable = ['qq_id', 'math_symbol_id', 'qa_id', 'quotation_id', 'created_at', 'updated_at'];
 }

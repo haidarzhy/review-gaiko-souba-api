@@ -16,6 +16,7 @@ class CreateQuotationFormulasTable extends Migration
         Schema::create('quotation_formulas', function (Blueprint $table) {
             $table->id();
             $table->string('formula')->nullable();
+            $table->string('formula_total_id')->nullable();
             $table->unsignedBigInteger('quotation_id')->nullable();
             $table->timestamps();
 

@@ -8,5 +8,5 @@ use Illuminate\Database\Eloquent\Model;
 class QuotationFormula extends Model
 {
     use HasFactory;
-    protected $fillable = ['formula', 'quotation_id'];
+    protected $fillable = ['formula', 'formula_total_id', 'quotation_id'];
 }

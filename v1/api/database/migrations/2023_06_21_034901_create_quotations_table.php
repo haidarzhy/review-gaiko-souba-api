@@ -20,6 +20,7 @@ class CreateQuotationsTable extends Migration
             $table->string('unit_price')->nullable();
             $table->string('amount')->nullable();
             $table->string('total')->nullable();
+            $table->string('formula_total')->nullable();
             $table->unsignedBigInteger('parent_id')->nullable();
             $table->timestamps();
         });

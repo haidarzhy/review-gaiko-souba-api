@@ -2,10 +2,15 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Qa;
 use App\Models\Qq;
+use Carbon\Carbon;
 use App\Models\Quotation;
 use App\Models\MathSymbol;
 use Illuminate\Http\Request;
+use App\Models\QuotationFormula;
+use App\Models\QuotationCondition;
+use App\Models\QuotationFormulaCondition;
 
 class QuotationController extends Controller
 {
@@ -61,27 +66,90 @@ class QuotationController extends Controller
     public function store(Request $request)
     {
         $data = $request->all();
+        $now = Carbon::now();
 
         // store quotation
         $quoteName = $data['qName'];
         $quote = Quotation::create([
-            'q_name' => $quoteName
+            'q_name' => $quoteName,
+            'formula_total' => $data['totalFormula']
         ]);
         if($quote) {
             // store condition
             if(isset($data['condition']) && count($data['condition']) > 0) {
-                $dumpStoreConditions = [];
+                $dumpStoreQConditions = [];
                 for ($i=0; $i < count($data['condition']); $i++) { 
                     $condi = $data['condition'][$i];
-                    if(isset($condi['conQqID']) && count($condi['conQqID']) > 0) {
-                        
+                    if(isset($condi['conQqID'])) {
+                        if(count($condi['conQqID']) > 1) { //multiple question
+                            for ($j=0; $j < count($condi['conQqID']); $j++) { 
+                                $label = $condi['conAnsID']['label'];
+                                $ansID = Qa::where('label', $label)->where('qq_id', $condi['conQqID'][$j])->first();
+                                if($ansID) {
+                                    $dumpQCondition = [
+                                        'qq_id' => $condi['conQqID'][$j],
+                                        'math_symbol_id' => $condi['conSymbol'],
+                                        'qa_id' => $ansID->id,
+                                        'quotation_id' => $quote->id,
+                                        'created_at' => $now,
+                                        'updated_at' => $now,
+                                    ];
+                                    array_push($dumpStoreQConditions, $dumpQCondition);
+                                }
+                            }
+                        } else { //single question
+                            $dumpQCondition = [
+                                'qq_id' => $condi['conQqID'][0],
+                                'math_symbol_id' => $condi['conSymbol'],
+                                'qa_id' => $condi['conAnsID']['value'],
+                                'quotation_id' => $quote->id,
+                                'created_at' => $now,
+                                'updated_at' => $now,
+                            ];
+                            array_push($dumpStoreQConditions, $dumpQCondition);
+                        }
+                    }
+                }
+
+                if(count($dumpStoreQConditions) > 0) {
+                    QuotationCondition::insert($dumpStoreQConditions);
+                }
+            }
+
+            // store formula
+            if(isset($data['formula']) && count($data['formula']) > 0) {
+                for ($i=0; $i < count($data['formula']); $i++) { 
+                    $formula = QuotationFormula::create([
+                        'formula' => $data['formula'][$i]['text'],
+                        'formula_total_id' => 'F'.($i + 1),
+                        'quotation_id' => $quote->id
+                    ]);
+
+                    $dumpStoreFCondition = [];
+                    if($formula && isset($data['formula'][$i]['fcondition']) && count($data['formula'][$i]['fcondition']) > 0) {
+                        $fcondition = $data['formula'][$i]['fcondition'];
+                        for ($j=0; $j < count($fcondition); $j++) { 
+                            $dumpFCondition = [
+                                'math_symbol_id' => $fcondition[$j]['fconSymbol'],
+                                'situation' => $fcondition[$j]['fconSituation'],
+                                'result' => $fcondition[$j]['fconResult'],
+                                'quotation_formula_id' => $formula->id,
+                                'created_at' => $now,
+                                'updated_at' => $now,
+                            ];
+                            array_push($dumpStoreFCondition, $dumpFCondition);
+                        }
+                    }
+
+                    if(count($dumpStoreFCondition) > 0) {
+                        QuotationFormulaCondition::insert($dumpStoreFCondition);
                     }
                 }
             }
 
             return response()->json([
                 'data' => $data,
-                'quote' => $quote
+                'quote' => $dumpStoreFCondition
             ]);
         } 
 
