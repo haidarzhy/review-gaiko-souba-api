@@ -205,19 +205,22 @@ class AuthController extends Controller
     {
         $data = $request->all();
         if((isset($data['email']) && $data['email'] != '') && (isset($data['password']) && $data['password'] != '')) {
-            $credentials = $request->only('email', 'password');
-            if (Auth::attempt($credentials)) {
-                if(Auth::user()->role_id != 2) {
+            $user = User::where('email', $data['email'])->first();
+            if($user) {
+                if (! $user || ! Hash::check($data['password'], $user->password)) {
                     return response()->json([
                         'error' => 'Invalid email or password'
-                    ], 401);
+                    ]);
                 }
-                $request->session()->regenerate();
-                return response()->json(Auth::user());
+                $token = $user->createToken($user->name)->plainTextToken;
+                return response()->json([
+                    'user' => $user,
+                    'token' => $token
+                ]);
             } else {
                 return response()->json([
                     'error' => 'Invalid email or password'
-                ], 401);
+                ]);
             }
         } else {
             return response()->json([
@@ -236,15 +239,18 @@ class AuthController extends Controller
     {
         $data = $request->all();
         if((isset($data['email']) && $data['email'] != '') && (isset($data['password']) && $data['password'] != '')) {
-            $credentials = $request->only('email', 'password');
-            if (Auth::attempt($credentials)) {
-                if(Auth::user()->role_id != 3) {
+            $user = User::where('email', $data['email'])->first();
+            if($user) {
+                if (! $user || ! Hash::check($data['password'], $user->password)) {
                     return response()->json([
                         'error' => 'Invalid email or password'
                     ]);
                 }
-                $request->session()->regenerate();
-                return response()->json(Auth::user());
+                $token = $user->createToken($user->name)->plainTextToken;
+                return response()->json([
+                    'user' => $user,
+                    'token' => $token
+                ]);
             } else {
                 return response()->json([
                     'error' => 'Invalid email or password'
@@ -265,11 +271,11 @@ class AuthController extends Controller
      */
     public function checkauth(Request $request)
     {
-        if(auth('sanctum')->check()) {
-            $user = User::where('id', Auth::user()->id)->with(['constructions', 'areas', 'paymentMethod'])->first();
+        if(Auth::guard('sanctum')->check()) {
+            $user = User::where('id', Auth::id())->with(['constructions', 'areas', 'paymentMethod'])->first();
             return response()->json($user);
         } else {
-            return response()->json(auth('sanctum')->check());
+            return response()->json(Auth::guard('sanctum')->check());
         }
         
     }
@@ -282,9 +288,15 @@ class AuthController extends Controller
      */
     public function signout(Request $request)
     {
-        Auth::logout();
-        $request->session()->invalidate();
-        return response()->json(auth('sanctum')->check());
+        $data = $request->all();
+        $user = User::find($data['id']);
+        if($user) {
+            $user->tokens()->delete();
+            return response()->json(auth('sanctum')->check());
+        } else {
+            return response()->json(auth('sanctum')->check());
+        }
+        
     }
 
     public function getAreaIdByName($areaName)

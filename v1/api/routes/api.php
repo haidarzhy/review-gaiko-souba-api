@@ -130,7 +130,9 @@ Route::get('/test', function (Request $request) {
     // $m = mail($recipientEmail, $subject, $mailContent, $headers);
 
     // return $m;
-    return config('app.upload_folder');
+
+    // $directory = config('filesystems.disks.public.root');
+    return 'response';
     // $path = 'setting/logo';
     //             try {
     //                 if (!Storage::exists($path)) {

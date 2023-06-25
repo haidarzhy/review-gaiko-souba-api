@@ -248,7 +248,8 @@ class QuestionnaireController extends Controller
                 foreach ($q->qas as $qa) {
                     if($qa->image != null) {
                         // Get the image path
-                        $imagePath = public_path(preg_replace("/public\//", "", $qa->image, 1));
+                        $directory = config('filesystems.disks.public.root');
+                        $imagePath = $directory.'/'.$qa->image;
                         // Delete the image file
                         if (file_exists($imagePath)) {
                             unlink($imagePath);

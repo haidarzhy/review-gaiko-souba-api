@@ -23,7 +23,9 @@ return [
         'http://localhost:3003', 
         'http://localhost:3000', 
         'https://gaiko-souba-com.icdl.tokyo',
-        'https://icdl.tokyo'
+        'https://icdl.tokyo',
+        'http://app-com.localhost:5174', 
+        'http://app-cp.localhost:5173', 
     ],
 
     'allowed_origins_patterns' => [],

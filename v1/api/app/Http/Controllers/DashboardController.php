@@ -13,7 +13,7 @@ class DashboardController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-    public function index()
+    public function index(Request $request)
     {
         $cons = User::where('role_id', 2)->orderBy('id', 'desc')->with(['paymentInfo'])->limit(5)->get();
         $contacts = Contact::whereIn('id', function ($query) {
