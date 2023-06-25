@@ -56,7 +56,9 @@ class ContactController extends Controller
 
         // Get the user's IP address from the request
         $ip = $request->ip();
-        $ip = '103.135.217.240';
+        if($ip == null) {
+            $ip = '103.135.217.240';
+        }
         // Use an IP geolocation service to get the location information
         $client = new Client();
         $response = $client->get('http://ip-api.com/json/' . $ip);
