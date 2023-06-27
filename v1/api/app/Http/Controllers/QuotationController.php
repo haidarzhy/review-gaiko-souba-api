@@ -73,6 +73,8 @@ class QuotationController extends Controller
         $quoteName = $data['qName'];
         $quote = Quotation::create([
             'q_name' => $quoteName,
+            'condition' => $data['conditionString'],
+            'base_amount' => $data['baseAmount'],
             'formula_total' => $data['totalFormula']
         ]);
         if($quote) {
@@ -91,6 +93,7 @@ class QuotationController extends Controller
                                         'qq_id' => $condi['conQqID'][$j],
                                         'math_symbol_id' => $condi['conSymbol'],
                                         'qa_id' => $ansID->id,
+                                        'condition_id' => 'C'.($i + 1),
                                         'quotation_id' => $quote->id,
                                         'created_at' => $now,
                                         'updated_at' => $now,
@@ -103,6 +106,7 @@ class QuotationController extends Controller
                                 'qq_id' => $condi['conQqID'][0],
                                 'math_symbol_id' => $condi['conSymbol'],
                                 'qa_id' => $condi['conAnsID']['value'],
+                                'condition_id' => 'C'.($i + 1),
                                 'quotation_id' => $quote->id,
                                 'created_at' => $now,
                                 'updated_at' => $now,

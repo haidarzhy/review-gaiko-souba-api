@@ -16,10 +16,12 @@ class CreateQuotationsTable extends Migration
         Schema::create('quotations', function (Blueprint $table) {
             $table->id();
             $table->string('q_name');
+            $table->string('base_amount')->nullable();
             $table->string('quantity')->nullable();
             $table->string('unit_price')->nullable();
             $table->string('amount')->nullable();
             $table->string('total')->nullable();
+            $table->string('condition')->nullable();
             $table->string('formula_total')->nullable();
             $table->unsignedBigInteger('parent_id')->nullable();
             $table->timestamps();

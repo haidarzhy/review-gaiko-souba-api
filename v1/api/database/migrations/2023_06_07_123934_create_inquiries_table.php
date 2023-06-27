@@ -15,15 +15,16 @@ class CreateInquiriesTable extends Migration
     {
         Schema::create('inquiries', function (Blueprint $table) {
             $table->id();
-            $table->string('fname')->nullable();
-            $table->string('lname')->nullable();
-            $table->string('kata_fname')->nullable();
-            $table->string('kata_lname')->nullable();
+            $table->string('uuid')->nullable();
+            $table->string('name')->nullable();
+            $table->string('kata_name')->nullable();
             $table->text('address')->nullable();
             $table->string('company_name')->nullable();
             $table->string('email')->nullable();
             $table->string('tel')->nullable();
+            $table->string('teconstruction_schedulel')->nullable();
             $table->string('total')->nullable();
+            $table->boolean('confirm')->default(0);
             $table->boolean('status');
             $table->integer('order');
             $table->timestamps();

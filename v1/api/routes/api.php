@@ -105,8 +105,12 @@ Route::post('/contact/store', 'App\Http\Controllers\ContactController@store');
 
 // QUESTIONNAIRE API
 Route::get('/u/questionnaires', 'App\Http\Controllers\QuestionnaireController@uIndex');
-Route::post('/u/questionnaires/calculate', 'App\Http\Controllers\QuestionnaireController@uCalculate');
 Route::post('/u/questionnaires/store', 'App\Http\Controllers\QuestionnaireController@uStore');
+
+// INQUIRY API
+Route::post('/u/questionnaires/calculate', 'App\Http\Controllers\InquiryController@calculate');
+Route::get('/u/inquiry/{uuid}/detail', 'App\Http\Controllers\InquiryController@show');
+Route::post('/u/inquiry/{uuid}/update', 'App\Http\Controllers\InquiryController@update');
 
 
 // Route::get('/test', function (Request $request) {

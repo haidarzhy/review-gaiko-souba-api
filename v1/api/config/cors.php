@@ -25,6 +25,7 @@ return [
         'https://gaiko-souba-com.icdl.tokyo',
         'https://icdl.tokyo',
         'http://app-com.localhost:5174', 
+        'http://app-net.localhost:5174', 
         'http://app-cp.localhost:5173', 
     ],
 

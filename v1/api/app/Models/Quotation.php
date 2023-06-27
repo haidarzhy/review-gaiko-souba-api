@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 class Quotation extends Model
 {
     use HasFactory;
-    protected $fillable = ['q_name', 'quantity', 'unit_price', 'amount', 'total', 'formula_total', 'parent_id'];
+    protected $fillable = ['q_name', 'condition', 'base_amount', 'quantity', 'unit_price', 'amount', 'total', 'formula_total', 'parent_id'];
 
     public function quotationConditions()
     {
