@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Quotation;
 use App\Models\QuotationFormula;
 use App\Models\QuotationCondition;
 use Illuminate\Database\Eloquent\Model;
@@ -20,6 +21,16 @@ class Quotation extends Model
     public function quotationFormulas()
     {
         return $this->hasMany(QuotationFormula::class);
+    }
+
+    public function parent()
+    {
+        return $this->belongsTo(Quotation::class, 'parent_id');
+    }
+
+    public function children()
+    {
+        return $this->hasMany(Quotation::class, 'parent_id');
     }
     
 }

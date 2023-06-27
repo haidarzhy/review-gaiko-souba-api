@@ -22,7 +22,7 @@ class QuotationController extends Controller
      */
     public function index()
     {
-        $qs = Quotation::orderBy('id', 'desc')->get();
+        $qs = Quotation::with(['parent'])->orderBy('id', 'desc')->get();
         return response()->json($qs);
     }
 

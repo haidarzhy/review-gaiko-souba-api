@@ -22,7 +22,7 @@ class CreateInquiriesTable extends Migration
             $table->string('company_name')->nullable();
             $table->string('email')->nullable();
             $table->string('tel')->nullable();
-            $table->string('teconstruction_schedulel')->nullable();
+            $table->string('construction_schedule')->nullable();
             $table->string('total')->nullable();
             $table->boolean('confirm')->default(0);
             $table->boolean('status');
