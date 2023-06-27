@@ -77,6 +77,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     // INQUIRY API
     Route::get('inquiry', 'App\Http\Controllers\InquiryController@index');
     Route::get('inquiry/{id}/detail', 'App\Http\Controllers\InquiryController@detail');
+    Route::post('inquiry/{id}/accept', 'App\Http\Controllers\InquiryController@accept');
 
     // SETTING API
     Route::get('/settings', 'App\Http\Controllers\SettingController@index');

@@ -121,8 +121,7 @@ class AuthController extends Controller
             // store user
             try {
                 $user = User::create([
-                    'name' => $data['lname'].' '.$data['fname'],
-                    'kana_name' => $data['kata_lname'].' '.$data['kata_fname'],
+                    'name' => isset($data['fname']) && isset($data['lname']) ? $data['lname'].' '.$data['fname'] : isset($data['name']) ? $data['name']:'',
                     'company_name' => $data['company_name'],
                     'tel' => $data['tel'],
                     'url' => $data['company_url'],
@@ -345,6 +344,7 @@ class AuthController extends Controller
         $user = User::find($id);
         if($user) {
             // update user data
+            $user->name = isset($data['name']) ? $data['name']:$user->name;
             $user->company_name = $data['company_name'];
             $user->address01 = $data['address01'];
             $user->address02 = $data['address02'];

@@ -12,7 +12,9 @@ use App\Models\InquiryQaAns;
 use App\Models\InquiryQuote;
 use Illuminate\Http\Request;
 use App\Mail\InquiryThankYouEmail;
+use App\Mail\InquiryAcceptUserEmail;
 use Illuminate\Database\QueryException;
+use App\Mail\InquiryAcceptContractorEmail;
 
 class InquiryController extends Controller
 {
@@ -20,8 +22,25 @@ class InquiryController extends Controller
     public function index()
     {
         $inquiry = Inquiry::with(['inquiryQuotes'])->get();
+        $dumpIqs = [];
+        if($inquiry && count($inquiry) > 0) {
+            foreach ($inquiry as $iq) {
+                $dIqs = [];
+                $dIqs['id'] = $iq->id;
+                $dIqs['construction_schedule'] = $iq->construction_schedule;
+                $dIqs['total'] = $iq->total;
+                if(isset($iq->inquiryQaAns) && $iq->inquiryQaAns != null && count($iq->inquiryQaAns) > 0) {
+                    foreach ($iq->inquiryQaAns as $iqas) {
+                        if($iqas->q_index == 'Q1') {
+                            $dIqs['area'] = $iqas->qa->label;
+                        }
+                    }
+                }
+                array_push($dumpIqs, $dIqs);
+            }
+        }
         if($inquiry) {
-            return response()->json($inquiry);
+            return response()->json($dumpIqs);
         } else {
             return response()->json(null);
         }
@@ -29,7 +48,7 @@ class InquiryController extends Controller
 
     public function detail($id)
     {
-        $inquiry = Inquiry::with(['inquiryQuotes'])->where('id', $id)->first();
+        $inquiry = Inquiry::with(['inquiryQuotes', 'inquiryQaAns'])->where('id', $id)->first();
         if($inquiry) {
             return response()->json($inquiry);
         } else {
@@ -442,8 +461,14 @@ class InquiryController extends Controller
                 $data = array_map(function ($item) use ($currentTimestamp, $inquiry) {
                     $item['q_index'] = $item['qIndex'];
                     $item['qq_id'] = $item['qId'];
-                    $item['qa_id'] = null;
-                    $item['qa_value'] = $item['ansId'];
+                    if($item['ansId'] != null) {
+                        $item['qa_id'] = $item['ansId'];
+                        $item['qa_value'] = null;
+                    } else {
+                        $item['qa_id'] = null;
+                        $item['qa_value'] = $item['ansId'];
+                    }
+                    
     
                     unset($item['qIndex']);
                     unset($item['qId']);
@@ -529,5 +554,42 @@ class InquiryController extends Controller
         }
 
         return response()->json($inquiry);
+    }
+
+    public function accept(Request $request, $id)
+    {
+        $data = $request->all();
+        $inquiry = Inquiry::find($id);
+        if($inquiry) {
+            $inquiry->user_id = $data['user_id'];
+            $inquiry->save();
+
+            // send mail to user
+            $mail = new InquiryAcceptUserEmail();
+            $mailContent = $mail->render();
+            $subject = 'お問い合わせ受付中！';
+            $recipientEmail = $inquiry->email;
+
+            $headers = "MIME-Version: 1.0" . "\r\n";
+            $headers .= "Content-type:text/html;charset=UTF-8" . "\r\n";
+            $headers .= "From: 外構相場.com <info@gaiko-souba.net>" . "\r\n";
+
+            $m = mail($recipientEmail, $subject, $mailContent, $headers);
+
+            // send mail to contractor
+            $mail2 = new InquiryAcceptContractorEmail();
+            $mailContent2 = $mail2->render();
+            $subject2 = 'お問い合わせ受付中！';
+            $recipientEmail2 = $inquiry->user->email;
+
+            $headers2 = "MIME-Version: 1.0" . "\r\n";
+            $headers2 .= "Content-type:text/html;charset=UTF-8" . "\r\n";
+            $headers2 .= "From: 外構相場.com <info@gaiko-souba.net>" . "\r\n";
+
+            $m = mail($recipientEmail2, $subject2, $mailContent2, $headers2);
+
+            return response()->json(1);
+        }
+        return response()->json(0);
     }
 }

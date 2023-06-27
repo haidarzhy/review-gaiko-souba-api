@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Models\Cc;
 use App\Models\Area;
 use App\Models\Contact;
+use App\Models\Inquiry;
 use App\Models\PaymentInfo;
 use App\Models\Construction;
 use App\Models\PaymentMethod;
@@ -96,6 +97,11 @@ class User extends Authenticatable
     public function contacts()
     {
         return $this->belongsTo(Contact::class);
+    }
+
+    public function inquiries()
+    {
+        return $this->hasMany(Inquiry::class);
     }
 
 
