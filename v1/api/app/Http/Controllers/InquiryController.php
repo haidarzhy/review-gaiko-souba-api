@@ -11,6 +11,7 @@ use Illuminate\Support\Str;
 use App\Models\InquiryQaAns;
 use App\Models\InquiryQuote;
 use Illuminate\Http\Request;
+use App\Mail\InquiryThankYouEmail;
 use Illuminate\Database\QueryException;
 
 class InquiryController extends Controller
@@ -372,7 +373,7 @@ class InquiryController extends Controller
                     if($tFSResult > 0 && $quotation->base_amount != null) {
                         array_push($finalCalculatedQuotes, [
                             'quotation_id' => $quotation->id,
-                            'quantity' => $tFSResult,
+                            'quantity' => ceil($tFSResult * 10) / 10,
                             'unit_price' => $quotation->base_amount,
                             'amount' => $quotation->base_amount * $tFSResult,
                             'inquiry_id' => $inquiry->id,
@@ -383,9 +384,9 @@ class InquiryController extends Controller
                     } else if($tFSResult > 0  && $quotation->base_amount == null) {
                         array_push($finalCalculatedQuotes, [
                             'quotation_id' => $quotation->id,
-                            'quantity' => $tFSResult,
+                            'quantity' => ceil($tFSResult * 10) / 10,
                             'unit_price' => 1,
-                            'amount' => $tFSResult,
+                            'amount' => ceil($tFSResult * 10) / 10,
                             'inquiry_id' => $inquiry->id,
                             'created_at' => $currentTimestamp,
                             'updated_at' => $currentTimestamp
@@ -486,8 +487,24 @@ class InquiryController extends Controller
         }
 
         if($inquiry) {
+            $inq = Inquiry::with(['inquiryQuotes'])->where('uuid', $uuid)->first();
             // send mail
+            $mailData = [
+                'inquiry' => $inq,
+            ];
 
+            $mail = new InquiryThankYouEmail($mailData);
+            $mailContent = $mail->render();
+            $subject = '掲載完了しました！';
+            $recipientEmail = $inq->email;
+
+            $headers = "MIME-Version: 1.0" . "\r\n";
+            $headers .= "Content-type:text/html;charset=UTF-8" . "\r\n";
+            $headers .= "From: 外構相場.com <info@gaiko-souba.net>" . "\r\n";
+
+            $m = mail($recipientEmail, $subject, $mailContent, $headers);
+
+            return response()->json($inquiry);
         }
 
         return response()->json($inquiry);
