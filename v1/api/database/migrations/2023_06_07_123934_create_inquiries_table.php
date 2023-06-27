@@ -28,7 +28,11 @@ class CreateInquiriesTable extends Migration
             $table->boolean('confirm')->default(0);
             $table->boolean('status');
             $table->integer('order');
+            $table->unsignedBigInteger('user_id')->nullable();
             $table->timestamps();
+
+
+            $table->foreign('user_id')->references('id')->on('users')->onUpdate('cascade')->onDelete('cascade');
         });
     }
 

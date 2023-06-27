@@ -16,6 +16,27 @@ use Illuminate\Database\QueryException;
 
 class InquiryController extends Controller
 {
+
+    public function index()
+    {
+        $inquiry = Inquiry::with(['inquiryQuotes'])->get();
+        if($inquiry) {
+            return response()->json($inquiry);
+        } else {
+            return response()->json(null);
+        }
+    }
+
+    public function detail($id)
+    {
+        $inquiry = Inquiry::with(['inquiryQuotes'])->where('id', $id)->first();
+        if($inquiry) {
+            return response()->json($inquiry);
+        } else {
+            return response()->json(null);
+        }
+    }
+
     public function calculate(Request $request)
     {
         $currentTimestamp = Carbon::now();

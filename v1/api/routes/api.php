@@ -74,6 +74,10 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/quotation/{id}/update', 'App\Http\Controllers\QuotationController@update');
     Route::delete('/quotation/{id}/destroy', 'App\Http\Controllers\QuotationController@destroy');
 
+    // INQUIRY API
+    Route::get('inquiry', 'App\Http\Controllers\InquiryController@index');
+    Route::get('inquiry/{id}/detail', 'App\Http\Controllers\InquiryController@detail');
+
     // SETTING API
     Route::get('/settings', 'App\Http\Controllers\SettingController@index');
     Route::post('/settings/{id}/update', 'App\Http\Controllers\SettingController@update');
