@@ -46,6 +46,16 @@ class InquiryController extends Controller
         }
     }
 
+    public function getAll()
+    {
+        $inquiry = Inquiry::with(['inquiryQuotes'])->orderBy('id', 'desc')->get();
+        if($inquiry) {
+            return response()->json($inquiry);
+        } else {
+            return response()->json(null);
+        }
+    }
+
     public function detail($id)
     {
         $inquiry = Inquiry::with(['inquiryQuotes', 'inquiryQaAns'])->where('id', $id)->first();
@@ -82,6 +92,7 @@ class InquiryController extends Controller
                     $tFSResult = 0;
                     // set quotation
                     $quotation = $quotations[$qindex];
+
                     if(count($quotation->quotationConditions) > 0) { // condition exists
                         // set conditions of a quotation
                         $qcs = $quotation->quotationConditions;
@@ -113,16 +124,18 @@ class InquiryController extends Controller
                                     if (isset($exists[$key])) {
                                         $value = $exists[$key];
                                         if (is_array($value) && empty($value)) {
-                                            return 'false';
+                                            return "false";
                                         }
                                         return is_array($value) ? array_reduce($value, function($carry, $item) {
-                                            return $carry && $item;
+                                            return $carry && $item == true ? "true":"false";
                                         }, true) : $value;
                                     }
                                     return $key;
                                 }, $quoteConditionString);
+
                                 // run the condition
                                 $qConditionResult = eval("return $replacedFormula;");
+
                             } else {
                                 foreach ($exists as $values) {
                                     if (in_array(false, $values, true)) {
@@ -137,6 +150,7 @@ class InquiryController extends Controller
                                 $calculatedFormulas = [];
                                 // calculate formulas
                                 $qfs = $quotation->quotationFormulas;
+
                                 if(count($qfs) > 0) { // if have formulas
                                     for ($fIndex = 0; $fIndex < count($qfs); $fIndex++) { // loop formulas
                                         // set formula
@@ -172,11 +186,13 @@ class InquiryController extends Controller
                                                             if($q) {
                                                                 if($q->qAnsInputType->input != 'text') {
                                                                     $qa = Qa::find($item['ansId']);
-                                                                    $qFIDs[] = [
-                                                                        'qIndex' => $item['qIndex'],
-                                                                        'qId' => $item['qId'],
-                                                                        'ansId' => $qa->unit_price != null ? $qa->unit_price:0
-                                                                    ];
+                                                                    if($qa) {
+                                                                        $qFIDs[] = [
+                                                                            'qIndex' => $item['qIndex'],
+                                                                            'qId' => $item['qId'],
+                                                                            'ansId' => $qa->unit_price != null ? $qa->unit_price:0
+                                                                        ];
+                                                                    }
                                                                 } else {
                                                                     $qFIDs[] = [
                                                                         'qIndex' => $item['qIndex'],
@@ -242,7 +258,7 @@ class InquiryController extends Controller
                                         }
                                     }
                                 }
-                                
+
                                 // check the formula result and total formula and calculate them
                                 if(count($calculatedFormulas) > 0 && $quotation->formula_total != null) {
                                     // if total formula was defined
@@ -258,9 +274,10 @@ class InquiryController extends Controller
                                             $calculatedFormulas[$FValues[$keyIndex]] = 1;
                                         }
                                     }
+
                                     if($checkValues) { // calculate if values and formula is same
                                         $totalFormulaString2 = strtr($totalFormulaString, $calculatedFormulas);
-                                        $tFSResult = ceil(eval("return $totalFormulaString2;") * 10) / 10;
+                                        $tFSResult = round(eval("return $totalFormulaString2;"));
                                     } else {
                                         $tFSResult = 0;
                                     }
@@ -310,11 +327,13 @@ class InquiryController extends Controller
                                                             if($q) {
                                                                 if($q->qAnsInputType->input != 'text') {
                                                                     $qa = Qa::find($item['ansId']);
-                                                                    $qFIDs[] = [
-                                                                        'qIndex' => $item['qIndex'],
-                                                                        'qId' => $item['qId'],
-                                                                        'ansId' => $qa->unit_price != null ? $qa->unit_price:0
-                                                                    ];
+                                                                    if($qa) {
+                                                                        $qFIDs[] = [
+                                                                            'qIndex' => $item['qIndex'],
+                                                                            'qId' => $item['qId'],
+                                                                            'ansId' => $qa->unit_price != null ? $qa->unit_price:0
+                                                                        ];
+                                                                    }
                                                                 } else {
                                                                     $qFIDs[] = [
                                                                         'qIndex' => $item['qIndex'],
@@ -400,7 +419,7 @@ class InquiryController extends Controller
                                 }
                                 if($checkValues) { // calculate if values and formula is same
                                     $totalFormulaString2 = strtr($totalFormulaString, $calculatedFormulas);
-                                    $tFSResult = ceil(eval("return $totalFormulaString2;") * 10) / 10;
+                                    $tFSResult = round(eval("return $totalFormulaString2;"));
                                 } else {
                                     $tFSResult = 0;
                                 }
@@ -413,20 +432,20 @@ class InquiryController extends Controller
                     if($tFSResult > 0 && $quotation->base_amount != null) {
                         array_push($finalCalculatedQuotes, [
                             'quotation_id' => $quotation->id,
-                            'quantity' => ceil($tFSResult * 10) / 10,
+                            'quantity' => round($tFSResult),
                             'unit_price' => $quotation->base_amount,
-                            'amount' => $quotation->base_amount * $tFSResult,
+                            'amount' => round($quotation->base_amount * $tFSResult),
                             'inquiry_id' => $inquiry->id,
                             'created_at' => $currentTimestamp,
                             'updated_at' => $currentTimestamp
                         ]);
-                        $total += $quotation->base_amount * $tFSResult;
+                        $total += round($quotation->base_amount * $tFSResult);
                     } else if($tFSResult > 0  && $quotation->base_amount == null) {
                         array_push($finalCalculatedQuotes, [
                             'quotation_id' => $quotation->id,
-                            'quantity' => ceil($tFSResult * 10) / 10,
+                            'quantity' => round($tFSResult),
                             'unit_price' => 1,
-                            'amount' => ceil($tFSResult * 10) / 10,
+                            'amount' => round($tFSResult),
                             'inquiry_id' => $inquiry->id,
                             'created_at' => $currentTimestamp,
                             'updated_at' => $currentTimestamp
@@ -456,19 +475,38 @@ class InquiryController extends Controller
                         $total += 0;
                     }
                 }
-    
+
+                
                 // store the request data 
                 $data = array_map(function ($item) use ($currentTimestamp, $inquiry) {
                     $item['q_index'] = $item['qIndex'];
                     $item['qq_id'] = $item['qId'];
-                    if($item['ansId'] != null) {
-                        $item['qa_id'] = $item['ansId'];
-                        $item['qa_value'] = null;
-                    } else {
-                        $item['qa_id'] = null;
-                        $item['qa_value'] = $item['ansId'];
+
+                    if(!is_array($item['ansId'])) { // single select
+                        // check the qa id
+                        $c = Qa::where('id', $item['ansId'])->where('qq_id', $item['qq_id'])->first();
+                        if($c) {
+                            $item['qa_id'] = $item['ansId'];
+                            $item['qa_value'] = null;
+                        } else {
+                            $item['qa_id'] = null;
+                            $item['qa_value'] = $item['ansId'];
+                        }
+                    } else { // multi select
+                        if(count($item['ansId']) > 0) {
+                            for ($i=0; $i < count($item['ansId']); $i++) { 
+                                // check the qa id
+                                $c = Qa::where('id', $item['ansId'][$i])->where('qq_id', $item['qq_id'])->first();
+                                if($c) {
+                                    $item['qa_id'] = $item['ansId'][$i];
+                                    $item['qa_value'] = null;
+                                } else {
+                                    $item['qa_id'] = null;
+                                    $item['qa_value'] = $item['ansId'][$i];
+                                }
+                            }
+                        }
                     }
-                    
     
                     unset($item['qIndex']);
                     unset($item['qId']);
@@ -488,7 +526,7 @@ class InquiryController extends Controller
                 
                 // store the inquiry quotes
                 $inquiryQuote = InquiryQuote::insert($finalCalculatedQuotes);
-    
+
                 // update total
                 $inquiry->total = $total;
                 $inquiry->save();
