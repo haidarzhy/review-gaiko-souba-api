@@ -15,7 +15,12 @@ class Quotation extends Model
 
     public function quotationConditions()
     {
-        return $this->hasMany(QuotationCondition::class);
+        return $this->hasMany(QuotationCondition::class)->with('mathSymbol');
+    }
+
+    public function quotationConditionsWithAll()
+    {
+        return $this->hasMany(QuotationCondition::class)->with(['mathSymbol', 'qq', 'qa']);
     }
 
     public function quotationFormulas()

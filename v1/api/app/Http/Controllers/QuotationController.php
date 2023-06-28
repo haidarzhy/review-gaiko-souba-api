@@ -166,7 +166,11 @@ class QuotationController extends Controller
      */
     public function show($id)
     {
-        return response()->json(0);
+        $quote = Quotation::with(['parent', 'quotationConditionsWithAll', 'quotationFormulas'])->find($id);
+        if($quote) {
+            return response()->json($quote);
+        }
+        return response()->json(null);
     }
 
     /**

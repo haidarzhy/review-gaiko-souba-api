@@ -25,18 +25,20 @@ class InquiryController extends Controller
         $dumpIqs = [];
         if($inquiry && count($inquiry) > 0) {
             foreach ($inquiry as $iq) {
-                $dIqs = [];
-                $dIqs['id'] = $iq->id;
-                $dIqs['construction_schedule'] = $iq->construction_schedule;
-                $dIqs['total'] = $iq->total;
-                if(isset($iq->inquiryQaAns) && $iq->inquiryQaAns != null && count($iq->inquiryQaAns) > 0) {
-                    foreach ($iq->inquiryQaAns as $iqas) {
-                        if($iqas->q_index == 'Q1') {
-                            $dIqs['area'] = $iqas->qa->label;
+                if($iq->confirm == 1) {
+                    $dIqs = [];
+                    $dIqs['id'] = $iq->id;
+                    $dIqs['construction_schedule'] = $iq->construction_schedule;
+                    $dIqs['total'] = $iq->total;
+                    if(isset($iq->inquiryQaAns) && $iq->inquiryQaAns != null && count($iq->inquiryQaAns) > 0) {
+                        foreach ($iq->inquiryQaAns as $iqas) {
+                            if($iqas->q_index == 'Q1') {
+                                $dIqs['area'] = $iqas->qa->label;
+                            }
                         }
                     }
+                    array_push($dumpIqs, $dIqs);
                 }
-                array_push($dumpIqs, $dIqs);
             }
         }
         if($inquiry) {
@@ -48,7 +50,7 @@ class InquiryController extends Controller
 
     public function getAll()
     {
-        $inquiry = Inquiry::with(['inquiryQuotes'])->orderBy('id', 'desc')->get();
+        $inquiry = Inquiry::with(['inquiryQuotes', 'inquiryQaAns'])->orderBy('id', 'desc')->get();
         if($inquiry) {
             return response()->json($inquiry);
         } else {
