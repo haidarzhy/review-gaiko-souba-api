@@ -22,15 +22,11 @@
         * {
             box-sizing: border-box;
         }
-        .mail-wrap {
-            padding: 100px 0;
-        }
         .mail-wrap-inn {
             max-width: 1000px;
             width: 90%;
             background: #fff;
             margin: 0 auto;
-            padding: 60px 50px;
             text-align: center;
         }
         .mail-wrap-inn h2 {
@@ -78,6 +74,7 @@
         }
         table tr {
             display: flex;
+            align-items: center;
             border-bottom: 1px solid #000;
             font-size: 16px;
             font-weight: 700;
@@ -96,9 +93,10 @@
             border-right: 1px solid #000;
             width: 14.5%;
             padding-right: 20px;
+            padding-left: 20px;
             text-align: right;
         }
-        table tr th:first-child,table tr td:first-child {
+        .first {
             width: 62.3%;
         }
         table tr td:first-child {
@@ -140,6 +138,9 @@
         .mail-wrap-inn .sp {
             display: none;
         }
+        .text-left {
+            text-align: left !important;
+        } 
         /* for media SP query 768 */
         @media screen and (max-width: 768px) {
             .mail-wrap-inn .pc {
@@ -147,9 +148,6 @@
             }
             .mail-wrap-inn .sp {
                 display: block;
-            }
-            .mail-wrap-inn {
-                padding: 50px 20px;
             }
             .mail-wrap-inn h2 {
                 font-size: 22px;
@@ -214,18 +212,18 @@
                 </dl>
                 <table>
                     <tr>
-                        <th>摘要</th>
+                        <th class="first">摘要</th>
                         <th>数量</th>
                         <th>単価</th>
                         <th>金額</th>
                     </tr>
-                    @if($inquiry->inquiry_quotes != null)
-                        @foreach($inquiry->inquiry_quotes as $iq)
+                    @if($inquiry->inquiryQuotes != null)
+                        @foreach($inquiry->inquiryQuotes as $iq)
                             <tr>
-                                <td>{{ $iq->quotation->q_name }}</td>
+                                <td class="first text-left">{{ $iq->quotation->q_name }}</td>
                                 <td>{{ $iq->quantity }}</td>
                                 <td>{{ number_format($iq->unit_price, 0, '.', ',') }}</td>
-                                <td>{{ number_format($inquiry->amount, 0, '.', ',') }}</td>
+                                <td>{{ number_format($iq->amount, 0, '.', ',') }}</td>
                             </tr>
                         @endforeach
                     @endif

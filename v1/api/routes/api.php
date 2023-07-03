@@ -119,41 +119,6 @@ Route::get('/u/inquiry/{uuid}/detail', 'App\Http\Controllers\InquiryController@s
 Route::post('/u/inquiry/{uuid}/update', 'App\Http\Controllers\InquiryController@update');
 
 
-// Route::get('/test', function (Request $request) {
-//     return Hash::make('mYgG#85y5KV@');
-// });
-
-Route::get('/test', function (Request $request) {
-
-    // $username = 'John Doe';
-    // $mailData = ['username' => $username];
-
-    // $mail = new RegisterEmail($username);
-    // $mailContent = $mail->render();
-    // $subject = 'Example Subject';
-    // $recipientEmail = 'kyawthantzamt@gmail.com';
-
-    // $headers = "MIME-Version: 1.0" . "\r\n";
-    // $headers .= "Content-type:text/html;charset=UTF-8" . "\r\n";
-    // $headers .= "From: 外構相場.com <info@gaiko-souba.net>" . "\r\n";
-
-    // $m = mail($recipientEmail, $subject, $mailContent, $headers);
-
-    // return $m;
-
-    // $directory = config('filesystems.disks.public.root');
-    return 'response';
-    // $path = 'setting/logo';
-    //             try {
-    //                 if (!Storage::exists($path)) {
-    //                     Storage::makeDirectory($path);
-    //                 }
-    //             } catch (\Exception $e) {
-    //                 return response()->json($e->getMessage());
-    //             }
-    // return !Storage::exists($path);
-});
-
 Route::get('/clear-cache', function (Request $request) {
     $cacheCommands = array(
         'event:clear',

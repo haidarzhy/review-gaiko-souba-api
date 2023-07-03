@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Database\QueryException;
 
 class AuthController extends Controller
@@ -51,7 +52,7 @@ class AuthController extends Controller
         try {
             $response = Http::get('https://credit.j-payment.co.jp/gateway/gateway_token.aspx', $cardData);
         } catch (\Exception $e) {
-            return response()->json(-1);
+            return response()->json('POS1 - '.$e->getMessage());
         }
 
         $responseString = (string) $response->getBody();
@@ -66,7 +67,7 @@ class AuthController extends Controller
             try {
                 $cct = Cct::whereRaw('LOWER(ccty) = ?', [Str::lower($data['card_type'])])->first();
             } catch (QueryException $e) {
-                return response()->json(-1);
+                return response()->json('POS2 - '.$e->getMessage());
             }
 
             if($cct) {
@@ -76,7 +77,7 @@ class AuthController extends Controller
             try {
                 $masked = preg_replace('/(\d{4})(\d{4})(\d{4})(\d{4})$/', '****-****-****-$4', $data['card_number']);
             } catch (\Exception $e) {
-                return response()->json(-1);
+                return response()->json('POS3 - '.$e->getMessage());
             }
 
             // store card info
@@ -91,7 +92,7 @@ class AuthController extends Controller
                     'ln' => NULL
                 ]);
             } catch (\Exception $e) {
-                return response()->json(-1);
+                return response()->json('POS4 - '.$e->getMessage());
             }
 
             // store the payment result
@@ -115,13 +116,13 @@ class AuthController extends Controller
                     'product_code' => $data['pId']
                 ]);
             } catch (\Exception $e) {
-                return response()->json(-1);
+                return response()->json('POS5 - '.$e->getMessage());
             }
 
             // store user
             try {
-                $user = User::create([
-                    'name' => isset($data['fname']) && isset($data['lname']) ? $data['lname'].' '.$data['fname'] : isset($data['name']) ? $data['name']:'',
+                $userData = [
+                    'name' => '',
                     'company_name' => $data['company_name'],
                     'tel' => $data['tel'],
                     'url' => $data['company_url'],
@@ -135,9 +136,17 @@ class AuthController extends Controller
                     'status' => 1,
                     'order' => 1,
                     'payment_info_id' => $paymentInfo->id
-                ]);
+                ];
+
+                if(isset($data['name'])) {
+                    $userData['name'] = $data['name'];
+                } else {
+                    $userData['name'] = $data['lname'].' '.$data['fname'];
+                }
+
+                $user = User::create($userData);
             } catch (\Exception $e) {
-                return response()->json(-1);
+                return response()->json('POS6 - '.$e->getMessage());
             }
 
             // store user_area and user_construction
@@ -147,7 +156,7 @@ class AuthController extends Controller
                     'user_id' => $user->id
                 ]);
             } catch (\Exception $e) {
-                return response()->json(-1);
+                return response()->json('POS7 - '.$e->getMessage());
             }
 
             if(isset($data['construction'])) {
@@ -161,7 +170,7 @@ class AuthController extends Controller
                                 'user_id' => $user->id,
                             ]);
                         } catch (\Exception $e) {
-                            return response()->json(-1);
+                            return response()->json('POS8 - '.$e->getMessage());
                         }
                     }
                 }
@@ -169,26 +178,34 @@ class AuthController extends Controller
 
             $mailData = [
                 'name' => $user->name,
+                'password' => $data['password'],
                 'plan' => $data['plan'],
-                'price' => $data['price']
+                'price' => $data['price'],
+                'subject' => '登録が確認されました！'
             ];
 
-            $mail = new RegisterEmail($mailData);
-            $mailContent = $mail->render();
-            $subject = '登録が確認されました！';
-            $recipientEmail = $user->email;
+            try {
+                $m = Mail::to($user->email)->send(new RegisterEmail($mailData));
+            } catch (\Exception $e) {
+                return response()->json('POS-1: '.$e->getMessage());
+            }
 
-            $headers = "MIME-Version: 1.0" . "\r\n";
-            $headers .= "Content-type:text/html;charset=UTF-8" . "\r\n";
-            $headers .= "From: 外構相場.com <info@gaiko-souba.net>" . "\r\n";
+            // $mail = new RegisterEmail($mailData);
+            // $mailContent = $mail->render();
+            // $subject = '登録が確認されました！';
+            // $recipientEmail = $user->email;
 
-            $m = mail($recipientEmail, $subject, $mailContent, $headers);
+            // $headers = "MIME-Version: 1.0" . "\r\n";
+            // $headers .= "Content-type:text/html;charset=UTF-8" . "\r\n";
+            // $headers .= "From: 外構相場.com <info@gaiko-souba.net>" . "\r\n";
+
+            // $m = mail($recipientEmail, $subject, $mailContent, $headers);
 
             return response()->json(1);
 
         } else {
 
-            return response()->json(-1);
+            return response()->json($arrayResponse);
         }
 
         return response()->json(0);
@@ -211,6 +228,13 @@ class AuthController extends Controller
                         'error' => 'Invalid email or password'
                     ]);
                 }
+
+                if ($user->status != 1) {
+                    return response()->json([
+                        'error' => 'Invalid email or password'
+                    ]);
+                }
+
                 $token = $user->createToken($user->name)->plainTextToken;
                 return response()->json([
                     'user' => $user,

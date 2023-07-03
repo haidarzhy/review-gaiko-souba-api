@@ -7,6 +7,7 @@ use GuzzleHttp\Client;
 use App\Models\Contact;
 use App\Mail\ContactEmail;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Database\QueryException;
 
 class ContactController extends Controller
@@ -100,18 +101,30 @@ class ContactController extends Controller
         if($contact) {
             $mailData = [
                 'name' => $contact->name,
+                'subject' => 'ご連絡いただきありがとうございます'
             ];
 
-            $mail = new ContactEmail($mailData);
-            $mailContent = $mail->render();
-            $subject = 'ご連絡いただきありがとうございます';
-            $recipientEmail = $contact->email;
+            try {
+                $m = Mail::to($contact->email)->send(new ContactEmail($mailData));
+            } catch (\Exception $e) {
+                return response()->json('POS-1: '.$e->getMessage());
+            }
 
-            $headers = "MIME-Version: 1.0" . "\r\n";
-            $headers .= "Content-type:text/html;charset=UTF-8" . "\r\n";
-            $headers .= "From: 外構相場.com <info@gaiko-souba.net>" . "\r\n";
+            // $mail = new ContactEmail($mailData);
+            // $mailContent = $mail->render();
+            // $subject = 'ご連絡いただきありがとうございます';
+            // $recipientEmail = $contact->email;
 
-            $m = mail($recipientEmail, $subject, $mailContent, $headers);
+            // $headers = "MIME-Version: 1.0" . "\r\n";
+            // $headers .= "Content-type:text/html;charset=UTF-8" . "\r\n";
+            // $headers .= "From: 外構相場.com <info@gaiko-souba.net>" . "\r\n";
+
+            // try {
+            //     $m = mail($recipientEmail, $subject, $mailContent, $headers);
+
+            // } catch (\Exception $e) {
+            //     return response()->json('POS-1: '.$e->getMessage());
+            // }
             return response()->json(1);
         } else {
             return response()->json(0);

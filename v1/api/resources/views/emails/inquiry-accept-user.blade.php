@@ -24,14 +24,12 @@
             box-sizing: border-box;
         }
         .mail-wrap {
-            padding: 100px 0;
         }
         .mail-wrap-inn {
             max-width: 1000px;
             width: 90%;
             background: #fff;
             margin: 0 auto;
-            padding: 60px 50px;
             text-align: center;
         }
         .mail-wrap-inn h2 {
@@ -87,7 +85,6 @@
                 display: block;
             }
             .mail-wrap-inn {
-                padding: 50px 20px;
             }
             .mail-wrap-inn h2 {
                 font-size: 22px;
@@ -105,9 +102,12 @@
 <body>
     <div class="mail-wrap">
         <div class="mail-wrap-inn">
-            <h3>おめでとう、</h3>
-            <p>あなたの問い合わせは契約業者によって受理されました。すぐにご連絡いたしますので、お待ちください。</p>
-            <p>ご利用いただきありがとうございます。</p>
+            <h3>あなたの依頼は施工業者によって受理されましたので、<br>
+                施工業者の情報を確認し、連絡をお願い致します。</h3>
+            <p>会社名/屋号: {{ $company_name }}</p>
+            <p>担当者名: {{ $name }}</p>
+            <p>住所: {{ $address01 }}  {{ $address02 }}</p>
+            <p>サイトURL: {{ $url }}</p> 
             <div class="button">
                 <a href="https://gaiko-souba-com.icdl.tokyo/" rel="noopener noreferrer" target="_blank">ホームへ戻る</a>
             </div>

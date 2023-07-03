@@ -23,14 +23,12 @@
             box-sizing: border-box;
         }
         .mail-wrap {
-            padding: 100px 0;
         }
         .mail-wrap-inn {
             max-width: 1000px;
             width: 90%;
             background: #fff;
             margin: 0 auto;
-            padding: 60px 50px;
             text-align: center;
         }
         .mail-wrap-inn h2 {
@@ -83,6 +81,12 @@
         .align-left {
             text-align: left;
         }
+        .password {
+            text-align: center;
+            margin: 30px 0px;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+        }
         /* for media SP query 768 */
         @media screen and (max-width: 768px) {
             .mail-wrap-inn .pc {
@@ -117,6 +121,7 @@
                 これで、ログイン画面にアクセスして<br class="sp">注文のリストを確認できる<br class="sp">ようになりました。<br>
                 登録したメールアドレスとパスワードを<br class="sp">使用してログイン画面に<br class="sp">アクセスしてください。
             </p>
+            <p class="password">{{ $password }}</p>
             <div class="button">
                 <a href="https://gaiko-souba-net.icdl.tokyo/sign-in" rel="noopener noreferrer" target="_blank">ログイン画面にアクセスする</a>
             </div>

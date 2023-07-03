@@ -20,11 +20,9 @@ return [
     'allowed_methods' => ['*'],
 
     'allowed_origins' => [
-        'http://localhost:3003', 
-        'http://localhost:3000', 
-        'https://gaiko-souba-com.icdl.tokyo',
-        'https://icdl.tokyo',
-        'http://app-com.localhost:5174', 
+        'https://gaiko-souba.net',  
+        'https://gaiko-souba.com',  
+        'http://app-com.localhost:5173', 
         'http://app-net.localhost:5174', 
         'http://app-cp.localhost:5173', 
     ],
