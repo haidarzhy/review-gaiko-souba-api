@@ -22,7 +22,7 @@ return [
     'allowed_origins' => [
         'https://gaiko-souba.net',  
         'https://gaiko-souba.com',  
-        'http://app-com.localhost:5173', 
+        'http://app-com.localhost:5174', 
         'http://app-net.localhost:5174', 
         'http://app-cp.localhost:5173', 
     ],

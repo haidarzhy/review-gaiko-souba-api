@@ -20,7 +20,7 @@ class QuestionnaireController extends Controller
      */
     public function index()
     {
-        $qs = Qq::where('status', 1)->with(['qAnsInputType'])->orderBy('id', 'desc')->get();
+        $qs = Qq::where('status', 1)->with(['qAnsInputType'])->orderBy('qindex', 'desc')->get();
         return response()->json($qs);
     }
 
@@ -31,7 +31,7 @@ class QuestionnaireController extends Controller
      */
     public function uIndex()
     {
-        $qs = Qq::where('status', 1)->with(['qAnsInputType', 'qas'])->orderBy('id', 'asc')->get();
+        $qs = Qq::where('status', 1)->with(['qAnsInputType', 'qas'])->orderBy('qindex', 'asc')->get();
         if($qs && count($qs) > 0) {
             $qsWithIndex = $qs->map(function ($item, $index) {
                 $item['index'] = $index + 1; // Add the index column
@@ -171,6 +171,16 @@ class QuestionnaireController extends Controller
         }
     }
 
+    public function getLastQindex() 
+    {
+        $qq = Qq::select('id', 'qindex', 'q')->orderBy('qindex', 'asc')->get();
+        $lastQindex = $qq->last()->qindex;
+        return response()->json([
+            'qq' => $qq,
+            'qLastIndex' => $lastQindex
+        ]);
+    }
+
     public function createQuestionnaire($request, $mode, $QID) {
 
         $currentTimestamp = Carbon::now();
@@ -182,6 +192,7 @@ class QuestionnaireController extends Controller
             if($mode == 'store') {
                 // store question
                 $qq = Qq::create([
+                    'qindex' => intval(substr($data['qindex'], 1)),
                     'q' => $data['question'],
                     'suffix' => isset($data['suffix']) ? $data['suffix']:null,
                     'q_ans_input_type_id' => $inputType->id,
@@ -195,6 +206,9 @@ class QuestionnaireController extends Controller
                     return 0;
                 }
             } else if($mode == 'update') {
+                // get qq
+                $qq = Qq::where('id', $QID)->first();
+
                 // update question
                 $updateData = [
                     'q' => $data['question'],
@@ -202,6 +216,18 @@ class QuestionnaireController extends Controller
                     'choice' => isset($data['choice']) ? $data['choice'] == '独身' ? 1:2 :'',
                     'q_ans_input_type_id' => $inputType->id,
                 ];
+
+                // check qindex
+                $qindex = intval(substr($data['qindex'], 1));
+                if($qq->qindex != $qindex) {
+                    $existsQindex = Qq::where('qindex', $qindex)->first();
+                    if($existsQindex) {
+                        $existsQindex->qindex = $qq->qindex;
+                        $existsQindex->save();
+                    }
+                } 
+
+                $updateData['qindex'] = $qindex;
 
                 if(isset($data['required'])) {
                     if($data['required'] == "true") {
@@ -211,7 +237,7 @@ class QuestionnaireController extends Controller
                     }
                 }
 
-                $qRes = Qq::where('id', $QID)->update($updateData);
+                $qRes = $qq->update($updateData);
                 if($qRes) {
                     $qq = Qq::find($QID);
                 } else {

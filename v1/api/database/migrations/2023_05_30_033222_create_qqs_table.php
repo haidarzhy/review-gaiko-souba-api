@@ -15,6 +15,7 @@ class CreateQqsTable extends Migration
     {
         Schema::create('qqs', function (Blueprint $table) {
             $table->id();
+            $table->unsignedInteger('qindex')->nullable();
             $table->text('q')->nullable();
             $table->text('suffix')->nullable();
             $table->unsignedBigInteger('q_ans_input_type_id')->nullable();
