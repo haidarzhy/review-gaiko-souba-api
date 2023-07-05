@@ -167,8 +167,8 @@ class QuotationController extends Controller
     public function show($id)
     {
         $quote = Quotation::with(['parent', 'quotationConditionsWithAll', 'quotationFormulasWithAll'])->find($id);
-        $qqs = Qq::select(['id'])->get()->map(function ($qq, $index) {
-            $qq->index = 'Q'.$index;
+        $qqs = Qq::select(['id'])->orderBy('id', 'asc')->get()->map(function ($qq, $index) {
+            $qq->index = 'Q'.($index + 1);
             return $qq;
         });
 

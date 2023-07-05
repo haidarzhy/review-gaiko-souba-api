@@ -19,7 +19,7 @@ class QuotationFormula extends Model
 
     public function quotationFormulaConditions()
     {
-        return $this->hasMany(QuotationFormulaCondition::class);
+        return $this->hasMany(QuotationFormulaCondition::class)->with(['mathSymbol']);
     }
 
 }
