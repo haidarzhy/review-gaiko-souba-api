@@ -13,7 +13,9 @@ use Illuminate\Support\Str;
 use App\Models\InquiryQaAns;
 use App\Models\InquiryQuote;
 use Illuminate\Http\Request;
+use App\Models\QuotationFormula;
 use App\Mail\InquiryThankYouEmail;
+use App\Models\QuotationCondition;
 use App\Mail\InquiryAcceptUserEmail;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
@@ -102,6 +104,336 @@ class InquiryController extends Controller
     {
         $currentTimestamp = Carbon::now();
         $data = $request->all();
+        // get qId array with qId key from data
+        $qqIds = array_column($data, 'qId');
+        // get qId array with qIndex key from data
+        $qqIndexIds = array_column($data, 'qIndex');
+
+        $quotationIds1 = QuotationCondition::whereIn('qq_id', $qqIds)
+                                ->pluck('quotation_id')
+                                ->toArray();
+        $quotationIds2 = QuotationFormula::where(function ($query) use ($qqIndexIds) {
+                                foreach ($qqIndexIds as $column) {
+                                    $query->orWhere('formula', 'LIKE', '%' . $column . '%');
+                                }
+                            })->pluck('quotation_id')
+                            ->toArray();
+        $combinedQuotationIds = array_unique(array_merge($quotationIds1, $quotationIds2));
+        // sort the values
+        asort($combinedQuotationIds);
+        // sort the index
+        $combinedQuotationIds = array_values($combinedQuotationIds);
+
+        $quotations = Quotation::whereIn('id', $combinedQuotationIds)->get();
+        
+        // check quotation is not empty
+        if(count($quotations) > 0) {
+            // loop the quotations which were contained data
+            for ($qIndex=0; $qIndex < count($quotations); $qIndex++) { 
+                
+                // set variables with short names
+                $quotation = $quotations[$qIndex];
+                $qcs = $quotation->quotationConditions;
+                $qfs = $quotation->quotationFormulas;
+
+                // global variables
+                $conditionResult = false;
+                $conditionResultArray = [];
+                $formulaResultArray = [];
+                $formulaConditionResult = false;
+
+                // check quotation has condition or not
+                if(count($qcs) > 0) {
+
+                    // loop the quotation condition
+                    for ($qCIndex=0; $qCIndex < count($qcs); $qCIndex++) { 
+
+                        // variables
+                        $qc = $qcs[$qCIndex];
+                        $conditionKey = $qc->condition_id;
+                        $conditionQIndex = 'Q'.$qc->qq->qindex;
+                        $conditionQqId = $qc->qq_id;
+                        $conditionAnsId = $qc->qa_id;
+                        $conditionMathSymbol = $qc->mathSymbol;
+
+                        if(!array_key_exists($conditionKey, $conditionResultArray)) {
+                            $conditionResultArray[$conditionKey] = [];
+                        }
+
+                        // filter the data, take only inlude question index from data
+                        $filteredData = array_filter($data, function ($item) use ($conditionQIndex) {
+                            return $item["qIndex"] === $conditionQIndex;
+                        });
+
+                        if($filteredData != null && count($filteredData) > 0) {
+
+                            // loop filtered data
+                            foreach($filteredData as $fD) {
+
+                                // check all required fields
+                                if($conditionQqId != null && $conditionAnsId != null && $conditionMathSymbol != null && isset($fD['qId']) && $fD['qId'] != null && isset($fD['ansId']) && $fD['ansId'] != null) {
+
+                                    if(is_array($fD['ansId'])) { // check ansId is array or not
+
+                                        foreach($fD['ansId'] as $fd) {
+
+                                            if(is_numeric($fd)) {
+
+                                                $conditionAsString = $conditionAnsId.' '.$conditionMathSymbol->sign.' '.$fd;
+                                                
+                                            } else {
+
+                                                $replacement = "false";
+                                                $conditionAsString = $conditionAnsId.' '.$conditionMathSymbol->sign.' '.$replacement;
+    
+                                            }
+
+                                            $result = eval("return $conditionAsString;");
+                                            if(isset($conditionKey) && isset($conditionResultArray[$conditionKey])) {
+                                                $conditionResultArray[$conditionKey][] = $result;
+                                            }
+
+                                        }
+
+                                    } else {
+
+                                        if(is_numeric($fD['ansId'])) {
+
+                                            $conditionAsString = $conditionAnsId.' '.$conditionMathSymbol->sign.' '.$fD['ansId'];
+                                            
+                                        } else {
+
+                                            $replacement = "false";
+                                            $conditionAsString = $conditionAnsId.' '.$conditionMathSymbol->sign.' '.$replacement;
+
+                                        }
+
+                                        $result = eval("return $conditionAsString;");
+                                        if(isset($conditionKey) && isset($conditionResultArray[$conditionKey])) {
+                                            $conditionResultArray[$conditionKey][] = $result;
+                                        }
+
+                                    }
+
+                                } else {
+
+                                    $conditionResultArray[$conditionKey][] = false;
+
+                                }
+
+                            }
+
+                        }
+
+                    }
+
+                }
+
+                // check quotation condition
+                if($quotation->condition != null) {
+
+                    $qCString = $quotation->condition;
+                    $replacedFormula = preg_replace_callback('/\b([A-Za-z0-9_]+)\b/', function($matches) use ($conditionResultArray) {
+                        $key = $matches[1];
+                        if (isset($conditionResultArray[$key])) {
+                            $value = $conditionResultArray[$key];
+                            if (is_array($value) && empty($value)) {
+                                return "false";
+                            }
+                            return is_array($value) ? array_reduce($value, function($carry, $item) {
+                                return $carry && $item == true ? "true":"false";
+                            }, true) : $value;
+                        }
+                        return $key;
+                    }, $qCString);
+
+                    $conditionResult = eval("return $replacedFormula;");
+
+                } else {
+                    // set the condition resutl to true if there's no condition
+                    $conditionResult = true;
+
+                }
+
+                // check the condition result
+                if($conditionResult) {
+
+                    // check quotation has formula or not
+                    if(count($qfs) > 0) {
+
+                        // loop the quotation foumula
+                        for ($qFIndex=0; $qFIndex < count($qfs); $qFIndex++) { 
+                            
+                            $formulaRow = $qfs[$qFIndex];
+                            $formulaString = $formulaRow->formula;
+                            $formulaKey = $formulaRow->formula_total_id;
+                            $formulaCondition = $formulaRow->quotationFormulaConditions;
+
+                            if($formulaString != null && $formulaString != '') {
+
+                                preg_match_all('/Q\d+/', $formulaString, $matches);
+                                $formulaQNumbers = array_unique($matches[0]);
+
+                                $filteredData = array_filter($data, function ($item) use ($formulaQNumbers) {
+                                    return in_array($item['qIndex'], $formulaQNumbers);
+                                });
+                                
+                                // Convert the filtered result back to an indexed array
+                                $filteredData = array_values($filteredData);
+
+                                if($filteredData != null && count($filteredData) > 0) {
+                                    
+                                    for($filteredDataIndex = 0; $filteredDataIndex < count($filteredData); $filteredDataIndex++) {
+
+                                        $fD = $filteredData[$filteredDataIndex];
+
+                                        if(isset($fD['ansId']) && $fD['ansId'] != null) { // check if ansId is not null
+
+                                            // answer input type are radio or checkbox
+                                            if(is_array($fD['ansId'])) { // check ansId is array or not
+
+                                                for($fDIndex = 0; $fDIndex < count($fD['ansId']); $fDIndex++) {
+
+                                                    $fd = $fD['ansId'][$fDIndex];
+
+                                                    if(is_numeric($fd)) {
+
+                                                        if (strpos($formulaString, $fD['qIndex']) !== false) { // check again for sure 
+
+                                                            // get the unit_price
+                                                            $qa = Qa::find($fD['ansId']);
+                                                            if($qa) {
+
+                                                                $ansUnitPrice = $qa->unit_price;
+                                                                if($ansUnitPrice != null) {
+
+                                                                    $formulaString = str_replace($fD['qIndex'], $ansUnitPrice, $formulaString);
+
+                                                                } else {
+
+                                                                    $formulaString = str_replace($fD['qIndex'], 0, $formulaString);
+
+                                                                }
+                                                                
+
+                                                            }
+
+                                                        }
+
+                                                    }
+
+                                                }
+                                                
+                                            } else if(is_numeric($fD['ansId'])) {
+
+                                                if (strpos($formulaString, $fD['qIndex']) !== false) { // check again for sure 
+
+                                                    // get the unit_price
+                                                    $qa = Qa::find($fD['ansId']);
+                                                    if($qa) {
+
+                                                        $ansUnitPrice = $qa->unit_price;
+                                                        if($ansUnitPrice != null) {
+
+                                                            $formulaString = str_replace($fD['qIndex'], $ansUnitPrice, $formulaString);
+
+                                                        } else {
+
+                                                            $formulaString = str_replace($fD['qIndex'], 0, $formulaString);
+
+                                                        }
+                                                        
+
+                                                    } else {
+
+                                                        $formulaString = str_replace($fD['qIndex'], 0, $formulaString);
+    
+                                                    }
+
+                                                } else {
+
+                                                    $formulaString = str_replace($fD['qIndex'], 0, $formulaString);
+
+                                                }
+
+                                            }
+
+                                        } else if(isset($fD['ans']) && $fD['ans'] != null) { // check if ans is not null
+
+                                            // answer input type are text
+                                            if(is_numeric($fD['ans'])) {
+
+                                                if (strpos($formulaString, $fD['qIndex']) !== false) { // check again for sure 
+
+                                                    $formulaString = str_replace($fD['qIndex'], $fD['ans'], $formulaString);
+                                                    
+                                                } else {
+
+                                                    $formulaString = str_replace($fD['qIndex'], 0, $formulaString);
+
+                                                }
+
+                                            } else {
+
+                                                $formulaString = str_replace($fD['qIndex'], 0, $formulaString);
+
+                                            }
+
+                                        }
+
+                                    }
+
+                                    // check the formula string, all must numbers and signs
+                                    if (preg_match('/[a-zA-Z]/', $formulaString)) { 
+
+                                        $formulaResultArray[$formulaKey] = 0;
+
+                                    } else {
+
+                                        $formulaResult = round(eval("return $formulaString;"));
+                                        // check if have formula conditions
+                                        if($formulaCondition != null && count($formulaCondition) > 0) {
+
+                                            for ($fCIndex=0; $fCIndex < count($formulaCondition); $fCIndex++) { 
+                                                
+                                                
+
+                                            }
+
+                                        }
+
+                                    }
+
+                                    return response()->json([
+                                        'formulaString' => $formulaString,
+                                        'formulaResult' => $formulaResultArray,
+                                    ]);
+
+                                }
+
+                                return response()->json([
+                                    'formulaQNumbers' => $formulaQNumbers,
+                                    'data' => $data,
+                                ]);
+
+                            }
+    
+                        }
+    
+                    }
+
+                }
+
+            }
+
+        }
+
+        return response()->json([
+            'unique' => $combinedQuotationIds,
+            'id1' => $quotationIds1,
+            'id2' => $quotationIds2
+        ]);
+
         try {
             if(count($data) > 0) {
                 $total = 0;
