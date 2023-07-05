@@ -61,6 +61,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     // QUESTIONNAIRE API
     Route::get('/questionnaire', 'App\Http\Controllers\QuestionnaireController@index');
+    Route::get('/questionnaire/get-last-qindex', 'App\Http\Controllers\QuestionnaireController@getLastQindex');
     Route::post('/questionnaire/store', 'App\Http\Controllers\QuestionnaireController@store');
     Route::get('/questionnaire/{id}/detail', 'App\Http\Controllers\QuestionnaireController@show');
     Route::post('/questionnaire/{id}/update', 'App\Http\Controllers\QuestionnaireController@update');
