@@ -52,6 +52,7 @@ class InquiryController extends Controller
                         $dIqs = [];
                         $dIqs['id'] = $iq->id;
                         $dIqs['construction_schedule'] = $iq->construction_schedule;
+                        $dIqs['address'] = $iq->address01.' '.$iq->address02;
                         $dIqs['total'] = $iq->total;
                         if(isset($iq->inquiryQaAns) && $iq->inquiryQaAns != null && count($iq->inquiryQaAns) > 0) {
                             $iqas = $iq->inquiryQaAns[0];
@@ -396,7 +397,7 @@ class InquiryController extends Controller
 
                                             for ($fCIndex=0; $fCIndex < count($formulaCondition); $fCIndex++) { 
                                                 
-                                                
+
 
                                             }
 
