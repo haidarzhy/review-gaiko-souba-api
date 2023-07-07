@@ -22,6 +22,7 @@ class CreateQasTable extends Migration
             $table->string('unit_price')->nullable();
             $table->unsignedBigInteger('qq_id')->nullable();
             $table->unsignedBigInteger('q_ans_input_type_id')->nullable();
+            $table->unsignedBigInteger('controlled_id')->nullable();
             $table->boolean('status');
             $table->integer('order');
             $table->timestamps();

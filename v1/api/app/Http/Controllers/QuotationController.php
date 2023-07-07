@@ -34,7 +34,7 @@ class QuotationController extends Controller
     public function create()
     {
         $mathSymbols = MathSymbol::get();
-        $qqs = Qq::select('id')->with(['qas'])->orderBy('id', 'asc')->get();
+        $qqs = Qq::select(['id', 'qindex'])->with(['qas'])->orderBy('id', 'asc')->get();
         $qas = $qqs->pluck('qas')->flatten()->map(function ($qa) {
             return [
                 'id' => $qa->id,
@@ -69,13 +69,16 @@ class QuotationController extends Controller
         $data = $request->all();
         $now = Carbon::now();
 
+        return response()->json($data);
+
         // store quotation
         $quoteName = $data['qName'];
         $quote = Quotation::create([
             'q_name' => $quoteName,
-            'condition' => $data['conditionString'],
-            'base_amount' => $data['baseAmount'],
-            'formula_total' => $data['totalFormula']
+            'condition' => isset($data['conditionString']) ? $data['conditionString']:null,
+            'base_amount' => isset($data['baseAmount']) ? $data['baseAmount']:null,
+            'formula_total' => isset($data['totalFormula']) ? $data['totalFormula']:null,
+            'parent_id' => $data['qParent'] != '0' ? $data['qParent']:null
         ]);
         if($quote) {
             // store condition
@@ -167,16 +170,9 @@ class QuotationController extends Controller
     public function show($id)
     {
         $quote = Quotation::with(['parent', 'quotationConditionsWithAll', 'quotationFormulasWithAll'])->find($id);
-        $qqs = Qq::select(['id'])->orderBy('id', 'asc')->get()->map(function ($qq, $index) {
-            $qq->index = 'Q'.($index + 1);
-            return $qq;
-        });
 
         if($quote) {
-            return response()->json([
-                'quote' => $quote,
-                'qqs' => $qqs
-            ]);
+            return response()->json($quote);
         }
         return response()->json(null);
     }
@@ -201,7 +197,122 @@ class QuotationController extends Controller
      */
     public function update(Request $request, $id)
     {
-        return response()->json(0);
+
+        $quotation = Quotation::find($id);
+        if($quotation) {
+            $data = $request->all();
+            $now = Carbon::now();
+
+            // update quotation
+            $quoteName = $data['qName'];
+            $quote = $quotation->update([
+                'q_name' => $quoteName,
+                'condition' => isset($data['conditionString']) ? $data['conditionString']: null,
+                'base_amount' => isset($data['baseAmount']) ? $data['baseAmount']:null,
+                'formula_total' => isset($data['totalFormula']) ? $data['totalFormula']: null,
+                'parent_id' => $data['qParent'] != '0' ? $data['qParent']:null
+            ]);
+
+            if($quote) {
+
+                $quote = $quotation;
+
+                // update condition
+                if(isset($data['condition']) && count($data['condition']) > 0) {
+                    $dumpUpdateConditions = [];
+                    for ($i=0; $i < count($data['condition']); $i++) { 
+                        $condi = $data['condition'][$i];
+
+                        if(isset($condi['conQqID'])) {
+                            if(count($condi['conQqID']) > 1) { //multiple question
+                                for ($j=0; $j < count($condi['conQqID']); $j++) { 
+                                    $label = $condi['conAnsID']['label'];
+                                    $ansID = Qa::where('label', $label)->where('qq_id', $condi['conQqID'][$j])->first();
+                                    if($ansID) {
+                                        $dumpQCondition = [
+                                            'id' => $condi['id'] != null && count($condi['id']) > 0 ? $condi['id'][$j]:null,
+                                            'qq_id' => $condi['conQqID'][$j],
+                                            'math_symbol_id' => $condi['conSymbol'],
+                                            'qa_id' => $ansID->id,
+                                            'condition_id' => 'C'.($i + 1),
+                                            'quotation_id' => $quote->id,
+                                            // 'created_at' => $now,
+                                            // 'updated_at' => $now,
+                                        ];
+                                        array_push($dumpUpdateConditions, $dumpQCondition);
+                                    }
+                                }
+                            } else { //single question
+
+                                $dumpQCondition = [
+                                    'id' => $condi['id'] != null && count($condi['id']) > 0 ? $condi['id'][0]:null,
+                                    'qq_id' => $condi['conQqID'][0],
+                                    'math_symbol_id' => $condi['conSymbol'],
+                                    'qa_id' => $condi['conAnsID']['value'],
+                                    'condition_id' => 'C'.($i + 1),
+                                    'quotation_id' => $quote->id,
+                                    // 'created_at' => $now,
+                                    // 'updated_at' => $now,
+                                ];
+                                array_push($dumpUpdateConditions, $dumpQCondition);
+                            }
+                        }
+                    }
+
+                    
+                    if(count($dumpUpdateConditions) > 0) {
+                        QuotationCondition::upsert($dumpUpdateConditions, ['id'], ['qq_id', 'math_symbol_id', 'qa_id', 'condition_id', 'quotation_id']);
+                    }
+                }
+
+                    // update formula
+                    if(isset($data['formula']) && count($data['formula']) > 0) {
+                        for ($i=0; $i < count($data['formula']); $i++) { 
+
+                            $formula = QuotationFormula::where('id', $data['formula'][$i]['id'])->first();
+
+                            $fCondi = $formula->update([
+                                'formula' => $data['formula'][$i]['text'],
+                                'formula_total_id' => 'F'.($i + 1),
+                                'quotation_id' => $quote->id
+                            ]);
+
+                            if($fCondi) {
+                                $dumpUpdateFCondition = [];
+                                if($formula && isset($data['formula'][$i]['fcondition']) && count($data['formula'][$i]['fcondition']) > 0) {
+                                    $fcondition = $data['formula'][$i]['fcondition'];
+                                    for ($j=0; $j < count($fcondition); $j++) { 
+                                        $dumpFCondition = [
+                                            'id' => $fcondition[$j]['id'],
+                                            'math_symbol_id' => $fcondition[$j]['fconSymbol'],
+                                            'situation' => $fcondition[$j]['fconSituation'],
+                                            'result' => $fcondition[$j]['fconResult'],
+                                            'quotation_formula_id' => $formula->id,
+                                            // 'created_at' => $now,
+                                            // 'updated_at' => $now,
+                                        ];
+                                        array_push($dumpUpdateFCondition, $dumpFCondition);
+                                    }
+                                }
+
+                                if(count($dumpUpdateFCondition) > 0) {
+                                    QuotationFormulaCondition::upsert($dumpUpdateFCondition, ['id'], ['math_symbol_id', 'situation', 'result', 'quotation_formula_id']);
+                                }
+                            } else {
+                                return response()->json(0);
+                            }
+                        }
+                    }
+
+                    return response()->json(1);
+
+            } else {
+                return response()->json(0);
+            }
+
+        } else {
+            return response()->json(0);
+        }
     }
 
     /**

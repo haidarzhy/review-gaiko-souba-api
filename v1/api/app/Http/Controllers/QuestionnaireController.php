@@ -186,21 +186,29 @@ class QuestionnaireController extends Controller
         $currentTimestamp = Carbon::now();
         $data = $request->all();
 
-        if(isset($data['inputType'])) {
-            $inputType = QAnsInputType::where('type', $data['inputType'])->first();
+        if(isset($data['inputType']) || isset($data['controllable'])) {
+            
+            if(isset($data['inputType'])) {
+                $inputType = QAnsInputType::where('type', $data['inputType'])->first();
+            }
+
             $qq = false;
             if($mode == 'store') {
-                // store question
-                $qq = Qq::create([
+
+                $qqData = [
                     'qindex' => intval(substr($data['qindex'], 1)),
                     'q' => $data['question'],
                     'suffix' => isset($data['suffix']) ? $data['suffix']:null,
-                    'q_ans_input_type_id' => $inputType->id,
+                    'q_ans_input_type_id' => isset($inputType) && $inputType != null ? $inputType->id:3,
                     'choice' => isset($data['choice']) ? $data['choice'] == '独身' ? 1:2 :'',
                     'required' => isset($data['required']) && $data['required'] == "true" ? 1 : 0,
+                    'control' => isset($data['controllable']) && $data['controllable'] == "true" ? 1 : 0,
                     'status' => 1,
                     'order' => 1
-                ]);
+                ];
+
+                // store question
+                $qq = Qq::create($qqData);
 
                 if(!$qq) {
                     return 0;
@@ -237,6 +245,14 @@ class QuestionnaireController extends Controller
                     }
                 }
 
+                if(isset($data['controllable'])) {
+                    if($data['controllable'] == "true") {
+                        $updateData['control'] = 1;
+                    } else {
+                        $updateData['control'] = 0;
+                    }
+                }
+
                 $qRes = $qq->update($updateData);
                 if($qRes) {
                     $qq = Qq::find($QID);
@@ -247,80 +263,156 @@ class QuestionnaireController extends Controller
             
             if($qq) {
                 if($mode == 'update') {
-                    if($inputType && $inputType->input == 'text') {
-                        // input text
-                        $dumpInputTextData = [
-                            'id' => isset($data['textItems']['id']) ? isset($data['textItems']['id']):null,
-                            'qq_id' => $qq->id,
-                            'suffix' => isset($data['textItems']['suffix']) ? $data['textItems']['suffix']:null,
-                            'status' => 1,
-                            'order' => 1
-                        ];
+                    if(isset($data['controllable']) && $data['controllable'] == "false") { // not controllable 
+                        if($inputType && $inputType->input == 'text') {
+                            // input text
+                            $dumpInputTextData = [
+                                'id' => isset($data['textItems']['id']) ? isset($data['textItems']['id']):null,
+                                'qq_id' => $qq->id,
+                                'suffix' => isset($data['textItems']['suffix']) ? $data['textItems']['suffix']:null,
+                                'status' => 1,
+                                'order' => 1
+                            ];
+            
+                            // store answer
+                            if($dumpInputTextData['id'] == null) {
+                                // Delete records that have IDs not present in $choiceIds
+                                Qa::where('qq_id', $qq->id)->delete();
+                            }
+                            $sa = Qa::upsert($dumpInputTextData, ['id'], ['suffix']);
+            
+                            if($sa) {
+                                return 1;
+                            } else {
+                                return 0;
+                            }
+                            
+                        } else if($inputType && $inputType->input == 'select') {
+                            // input select
+                            if(isset($data['selectItems']) && count($data['selectItems']) > 0) {
+                                $dumpInputSelectData = [];
+                                foreach($data['selectItems'] as $si) {
+                                    if(isset($si['label'])) {
+                                        $dumpSi = [
+                                            'id' => isset($si['id']) ? $si['id']:null,
+                                            'label' => $si['label'],
+                                            'unit_price' => isset($si['unit_price']) ? $si['unit_price']:null,
+                                            'qq_id' => $qq->id,
+                                            'status' => 1,
+                                            'order' => 1,
+                                            'created_at' => $currentTimestamp,
+                                            'updated_at' => $currentTimestamp
+                                        ];
+                                        array_push($dumpInputSelectData, $dumpSi);
+                                    }
+                                }
         
-                        // store answer
-                        if($dumpInputTextData['id'] == null) {
-                            // Delete records that have IDs not present in $choiceIds
-                            Qa::where('qq_id', $qq->id)->delete();
-                        }
-                        $sa = Qa::upsert($dumpInputTextData, ['id'], ['suffix']);
         
-                        if($sa) {
-                            return 1;
-                        } else {
-                            return 0;
-                        }
-                        
-                    } else if($inputType && $inputType->input == 'select') {
-                        // input select
-                        if(isset($data['selectItems']) && count($data['selectItems']) > 0) {
-                            $dumpInputSelectData = [];
-                            foreach($data['selectItems'] as $si) {
-                                if(isset($si['label'])) {
-                                    $dumpSi = [
-                                        'id' => isset($si['id']) ? $si['id']:null,
-                                        'label' => $si['label'],
-                                        'unit_price' => isset($si['unit_price']) ? $si['unit_price']:null,
+                                if(count($dumpInputSelectData) > 0) {
+                                    // store answer
+                                    // Extract the IDs from the $dumpInputChoiceData
+                                    $selectIds = array_column($dumpInputSelectData, 'id');
+                                    // Delete records that have IDs not present in $choiceIds
+                                    Qa::where('qq_id', $qq->id)->whereNotIn('id', $selectIds)->delete();
+                                    $sa = Qa::upsert($dumpInputSelectData, ['id'], ['label', 'unit_price']);
+                                    if($sa) {
+                                        return 1;
+                                    } else {
+                                        return 0;
+                                    }
+                                }
+        
+                            } else {
+                                return 1;
+                            }
+        
+                        } else if($inputType && ($inputType->input == 'choice') ) {
+                            // input choice
+                            if(isset($data['choiceItems']) && count($data['choiceItems']) > 0) {
+                                $dumpInputChoiceData = [];
+                                for ($i=0; $i < count($data['choiceItems']); $i++) { 
+        
+                                    $ci = $data['choiceItems'][$i];
+                                    $dumpCi = [
+                                        'id' => isset($ci['id']) ? $ci['id']:null,
+                                        'label' => isset($ci['label']) ? $ci['label']:null,
+                                        'unit_price' => isset($ci['unit_price']) ? $ci['unit_price']:null,
                                         'qq_id' => $qq->id,
                                         'status' => 1,
                                         'order' => 1,
                                         'created_at' => $currentTimestamp,
                                         'updated_at' => $currentTimestamp
                                     ];
-                                    array_push($dumpInputSelectData, $dumpSi);
+        
+                                    // upload file if has file
+                                    $fileKey = 'choiceItems.'.$i.'.file';
+                                    if($request->hasFile($fileKey)) {
+                                        $file = $request->file($fileKey);
+                                        $path = config('app.upload_folder').'/questionnaire/ans/choices';
+                                        if (!Storage::exists($path)) {
+                                            Storage::makeDirectory($path);
+                                        }
+        
+                                        $currentDate = Carbon::now()->format('Ymd');
+                                        $fileExtension = $file->getClientOriginalExtension();
+                                        $newFileName = $currentDate .'-'.uniqid().'.' . $fileExtension;
+                                        $storedPath = Storage::disk('public')->putFileAs($path, $file, $newFileName);
+                                        $dumpCi['image'] = $storedPath;
+                                    } else if(isset($ci['imagePath'])) {
+                                        $pathImg = str_replace(config('app.url').'/', '', $ci['imagePath']);
+                                        $dumpCi['image'] = $pathImg;
+                                    }
+        
+                                    array_push($dumpInputChoiceData, $dumpCi);
                                 }
-                            }
-    
-    
-                            if(count($dumpInputSelectData) > 0) {
-                                // store answer
-                                // Extract the IDs from the $dumpInputChoiceData
-                                $selectIds = array_column($dumpInputSelectData, 'id');
-                                // Delete records that have IDs not present in $choiceIds
-                                Qa::where('qq_id', $qq->id)->whereNotIn('id', $selectIds)->delete();
-                                $sa = Qa::upsert($dumpInputSelectData, ['id'], ['label', 'unit_price']);
-                                if($sa) {
-                                    return 1;
+                                
+                                if(count($dumpInputChoiceData) > 0) {
+                                    // store answer
+                                    // Extract the IDs from the $dumpInputChoiceData
+                                    $choiceIds = array_column($dumpInputChoiceData, 'id');
+                                    // Delete records that have IDs not present in $choiceIds
+                                    Qa::where('qq_id', $qq->id)->whereNotIn('id', $choiceIds)->delete();
+                                    $sa = Qa::upsert($dumpInputChoiceData, ['id'], ['label', 'unit_price', 'image']);
+                                    if($sa) {
+                                        // delete unused images
+                                        $databaseImages = Qa::where('image', '!=', null)->pluck('image')->all();
+                                        $directory = public_path(config('app.upload_path').'/questionnaire/ans/choices');
+                                        $files = glob($directory . '/*');
+                                        foreach ($files as $file) {
+                                            if (is_file($file) && !in_array('uploads'.str_replace(public_path(config('app.upload_path')), '', $file), $databaseImages)) {
+                                                unlink($file); // Delete the image file
+                                            }
+                                        }
+        
+                                        // delete old records
+        
+                                        return 1;
+                                    } else {
+                                        return 0;
+                                    }
                                 } else {
-                                    return 0;
+                                    return 1;
                                 }
+        
+                            } else {
+                                return 1;
                             }
-    
                         } else {
-                            return 1;
+                            return 0;
                         }
-    
-                    } else if($inputType && ($inputType->input == 'choice') ) {
-                        // input choice
-                        if(isset($data['choiceItems']) && count($data['choiceItems']) > 0) {
+                    } else { // controllable ans
+
+                        if(isset($data['controlItems']) && count($data['controlItems']) > 0) {
                             $dumpInputChoiceData = [];
-                            for ($i=0; $i < count($data['choiceItems']); $i++) { 
+                            for ($i=0; $i < count($data['controlItems']); $i++) { 
     
-                                $ci = $data['choiceItems'][$i];
+                                $ci = $data['controlItems'][$i];
                                 $dumpCi = [
                                     'id' => isset($ci['id']) ? $ci['id']:null,
                                     'label' => isset($ci['label']) ? $ci['label']:null,
                                     'unit_price' => isset($ci['unit_price']) ? $ci['unit_price']:null,
                                     'qq_id' => $qq->id,
+                                    'controlled_id' => isset($ci['controlled_id']['value']) ? $ci['controlled_id']['value']:null,
                                     'status' => 1,
                                     'order' => 1,
                                     'created_at' => $currentTimestamp,
@@ -328,10 +420,10 @@ class QuestionnaireController extends Controller
                                 ];
     
                                 // upload file if has file
-                                $fileKey = 'choiceItems.'.$i.'.file';
+                                $fileKey = 'controlItems.'.$i.'.file';
                                 if($request->hasFile($fileKey)) {
                                     $file = $request->file($fileKey);
-                                    $path = config('app.upload_folder').'/questionnaire/ans/choices';
+                                    $path = config('app.upload_folder').'/questionnaire/ans/controls';
                                     if (!Storage::exists($path)) {
                                         Storage::makeDirectory($path);
                                     }
@@ -348,6 +440,7 @@ class QuestionnaireController extends Controller
     
                                 array_push($dumpInputChoiceData, $dumpCi);
                             }
+
                             
                             if(count($dumpInputChoiceData) > 0) {
                                 // store answer
@@ -355,11 +448,11 @@ class QuestionnaireController extends Controller
                                 $choiceIds = array_column($dumpInputChoiceData, 'id');
                                 // Delete records that have IDs not present in $choiceIds
                                 Qa::where('qq_id', $qq->id)->whereNotIn('id', $choiceIds)->delete();
-                                $sa = Qa::upsert($dumpInputChoiceData, ['id'], ['label', 'unit_price', 'image']);
+                                $sa = Qa::upsert($dumpInputChoiceData, ['id'], ['label', 'unit_price', 'image', 'controlled_id']);
                                 if($sa) {
                                     // delete unused images
                                     $databaseImages = Qa::where('image', '!=', null)->pluck('image')->all();
-                                    $directory = public_path(config('app.upload_path').'/questionnaire/ans/choices');
+                                    $directory = public_path(config('app.upload_path').'/questionnaire/ans/controls');
                                     $files = glob($directory . '/*');
                                     foreach ($files as $file) {
                                         if (is_file($file) && !in_array('uploads'.str_replace(public_path(config('app.upload_path')), '', $file), $databaseImages)) {
@@ -380,73 +473,141 @@ class QuestionnaireController extends Controller
                         } else {
                             return 1;
                         }
-                    } else {
-                        return 0;
                     }
                 } else {
-                    if($inputType && $inputType->input == 'text') {
-                        // input text
-                        $dumpInputTextData = [
-                            'qq_id' => $qq->id,
-                            'suffix' => isset($data['textItems']['suffix']) ? $data['textItems']['suffix']:null,
-                            'status' => 1,
-                            'order' => 1
-                        ];
+                    if(!isset($data['controllable']) && $data['controllable'] == "false") { // not controllable 
+                        if($inputType && $inputType->input == 'text') {
+                            // input text
+                            $dumpInputTextData = [
+                                'qq_id' => $qq->id,
+                                'suffix' => isset($data['textItems']['suffix']) ? $data['textItems']['suffix']:null,
+                                'status' => 1,
+                                'order' => 1
+                            ];
+            
+                            // store answer
+                            $sa = Qa::create($dumpInputTextData);
+            
+                            if($sa) {
+                                return 1;
+                            } else {
+                                return 0;
+                            }
+                            
+                        } else if($inputType && $inputType->input == 'select') {
+                            // input select
+                            if(isset($data['selectItems']) && count($data['selectItems']) > 0) {
+                                $dumpInputSelectData = [];
+                                foreach($data['selectItems'] as $si) {
+                                    if(isset($si['label'])) {
+                                        $dumpSi = [
+                                            'label' => $si['label'],
+                                            'unit_price' => isset($si['unit_price']) ? $si['unit_price']:null,
+                                            'qq_id' => $qq->id,
+                                            'status' => 1,
+                                            'order' => 1,
+                                            'created_at' => $currentTimestamp,
+                                            'updated_at' => $currentTimestamp
+                                        ];
+                                        array_push($dumpInputSelectData, $dumpSi);
+                                    }
+                                }
         
-                        // store answer
-                        $sa = Qa::create($dumpInputTextData);
         
-                        if($sa) {
-                            return 1;
-                        } else {
-                            return 0;
-                        }
-                        
-                    } else if($inputType && $inputType->input == 'select') {
-                        // input select
-                        if(isset($data['selectItems']) && count($data['selectItems']) > 0) {
-                            $dumpInputSelectData = [];
-                            foreach($data['selectItems'] as $si) {
-                                if(isset($si['label'])) {
-                                    $dumpSi = [
-                                        'label' => $si['label'],
-                                        'unit_price' => isset($si['unit_price']) ? $si['unit_price']:null,
+                                if(count($dumpInputSelectData) > 0) {
+                                    // store answer
+                                    $sa = Qa::insert($dumpInputSelectData);
+                                    if($sa) {
+                                        return 1;
+                                    } else {
+                                        return 0;
+                                    }
+                                }
+        
+                            } else {
+                                return 1;
+                            }
+        
+                        } else if($inputType && ($inputType->input == 'choice') ) {
+                            // input choice
+                            if(isset($data['choiceItems']) && count($data['choiceItems']) > 0) {
+                                $dumpInputChoiceData = [];
+                                for ($i=0; $i < count($data['choiceItems']); $i++) { 
+        
+                                    $ci = $data['choiceItems'][$i];
+                                    $dumpCi = [
+                                        'label' => isset($ci['label']) ? $ci['label']:null,
+                                        'unit_price' => isset($ci['unit_price']) ? $ci['unit_price']:null,
                                         'qq_id' => $qq->id,
                                         'status' => 1,
                                         'order' => 1,
                                         'created_at' => $currentTimestamp,
                                         'updated_at' => $currentTimestamp
                                     ];
-                                    array_push($dumpInputSelectData, $dumpSi);
+        
+                                    // upload file if has file
+                                    $fileKey = 'choiceItems.'.$i.'.file';
+                                    if($request->hasFile($fileKey)) {
+                                        $file = $request->file($fileKey);
+                                        $path = config('app.upload_folder').'/questionnaire/ans/choices';
+                                        if (!Storage::exists($path)) {
+                                            Storage::makeDirectory($path);
+                                        }
+        
+                                        $currentDate = Carbon::now()->format('Ymd');
+                                        $fileExtension = $file->getClientOriginalExtension();
+                                        $newFileName = $currentDate .'-'.uniqid().'.' . $fileExtension;
+                                        $storedPath = Storage::disk('public')->putFileAs($path, $file, $newFileName);
+                                        $dumpCi['image'] = $storedPath;
+                                    } else if(isset($ci['imagePath'])) {
+                                        $pathImg = str_replace(config('app.url').'/', '', $ci['imagePath']);
+                                        $dumpCi['image'] = $pathImg;
+                                    }
+        
+                                    array_push($dumpInputChoiceData, $dumpCi);
                                 }
-                            }
-    
-    
-                            if(count($dumpInputSelectData) > 0) {
-                                // store answer
-                                $sa = Qa::insert($dumpInputSelectData);
-                                if($sa) {
-                                    return 1;
+                                
+                                if(count($dumpInputChoiceData) > 0) {
+                                    // store answer
+                                    $sa = Qa::insert($dumpInputChoiceData);
+                                    if($sa) {
+                                        // delete unused images
+                                        $databaseImages = Qa::where('image', '!=', null)->pluck('image')->all();
+                                        $directory = public_path(config('app.upload_path').'/questionnaire/ans/choices');
+                                        $files = glob($directory . '/*');
+                                        foreach ($files as $file) {
+                                            if (is_file($file) && !in_array('uploads'.str_replace(public_path(config('app.upload_path')), '', $file), $databaseImages)) {
+                                                unlink($file); // Delete the image file
+                                            }
+                                        }
+        
+                                        // delete old records
+        
+                                        return 1;
+                                    } else {
+                                        return 0;
+                                    }
                                 } else {
-                                    return 0;
+                                    return 1;
                                 }
+        
+                            } else {
+                                return 1;
                             }
-    
                         } else {
-                            return 1;
+                            return 0;
                         }
-    
-                    } else if($inputType && ($inputType->input == 'choice') ) {
-                        // input choice
-                        if(isset($data['choiceItems']) && count($data['choiceItems']) > 0) {
+                    } else { // controllable ans
+                        if(isset($data['controlItems']) && count($data['controlItems']) > 0) {
                             $dumpInputChoiceData = [];
-                            for ($i=0; $i < count($data['choiceItems']); $i++) { 
+                            for ($i=0; $i < count($data['controlItems']); $i++) { 
     
-                                $ci = $data['choiceItems'][$i];
+                                $ci = $data['controlItems'][$i];
                                 $dumpCi = [
                                     'label' => isset($ci['label']) ? $ci['label']:null,
                                     'unit_price' => isset($ci['unit_price']) ? $ci['unit_price']:null,
                                     'qq_id' => $qq->id,
+                                    'controlled_id' => isset($ci['controlled_id']['value']) ? $ci['controlled_id']['value']:null,
                                     'status' => 1,
                                     'order' => 1,
                                     'created_at' => $currentTimestamp,
@@ -454,10 +615,10 @@ class QuestionnaireController extends Controller
                                 ];
     
                                 // upload file if has file
-                                $fileKey = 'choiceItems.'.$i.'.file';
+                                $fileKey = 'controlItems.'.$i.'.file';
                                 if($request->hasFile($fileKey)) {
                                     $file = $request->file($fileKey);
-                                    $path = config('app.upload_folder').'/questionnaire/ans/choices';
+                                    $path = config('app.upload_folder').'/questionnaire/ans/controls';
                                     if (!Storage::exists($path)) {
                                         Storage::makeDirectory($path);
                                     }
@@ -481,7 +642,7 @@ class QuestionnaireController extends Controller
                                 if($sa) {
                                     // delete unused images
                                     $databaseImages = Qa::where('image', '!=', null)->pluck('image')->all();
-                                    $directory = public_path(config('app.upload_path').'/questionnaire/ans/choices');
+                                    $directory = public_path(config('app.upload_path').'/questionnaire/ans/controls');
                                     $files = glob($directory . '/*');
                                     foreach ($files as $file) {
                                         if (is_file($file) && !in_array('uploads'.str_replace(public_path(config('app.upload_path')), '', $file), $databaseImages)) {
@@ -502,8 +663,6 @@ class QuestionnaireController extends Controller
                         } else {
                             return 1;
                         }
-                    } else {
-                        return 0;
                     }
                 }
                 

@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 class Qa extends Model
 {
     use HasFactory;
-    protected $fillable = ['suffix', 'label', 'image', 'quantity', 'unit_price', 'qq_id', 'status', 'order'];
+    protected $fillable = ['suffix', 'label', 'image', 'quantity', 'unit_price', 'qq_id', 'controlled_id', 'status', 'order'];
 
     public function qq()
     {
@@ -28,5 +28,10 @@ class Qa extends Model
     public function inquiryQaAns()
     {
         return $this->hasOne(InquiryQaAns::class);
+    }
+
+    public function controlled()
+    {
+        return $this->belongsTo(Qq::class, 'controlled_id');
     }
 }
