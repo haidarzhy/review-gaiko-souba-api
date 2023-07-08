@@ -20,7 +20,6 @@ class CreateQqsTable extends Migration
             $table->unsignedBigInteger('q_ans_input_type_id')->nullable();
             $table->text('choice')->nullable();
             $table->boolean('required')->default(0);
-            $table->boolean('control')->default(0);
             $table->boolean('status');
             $table->integer('order');
             $table->timestamps();

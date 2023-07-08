@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 class Qa extends Model
 {
     use HasFactory;
-    protected $fillable = ['suffix', 'label', 'image', 'quantity', 'unit_price', 'qq_id', 'controlled_id', 'status', 'order'];
+    protected $fillable = ['suffix', 'label', 'image', 'quantity', 'unit_price', 'qq_id', 'control', 'controlled_id', 'status', 'order'];
 
     public function qq()
     {

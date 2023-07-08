@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 class Qq extends Model
 {
     use HasFactory;
-    protected $fillable = ['qindex', 'q', 'suffix', 'q_ans_input_type_id', 'choice', 'required', 'control', 'status', 'order'];
+    protected $fillable = ['qindex', 'q', 'suffix', 'q_ans_input_type_id', 'choice', 'required', 'status', 'order'];
 
     public function qas()
     {
