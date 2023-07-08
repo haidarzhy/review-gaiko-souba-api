@@ -22,6 +22,7 @@ class CreateSettingsTable extends Migration
             $table->text('icon')->nullable();
             $table->string('email')->nullable();
             $table->text('footer_text')->nullable();
+            $table->integer('item_per_page')->nullable()->default(10);
             $table->string('site_size')->nullable();
             $table->string('cache_size')->nullable();
             $table->timestamps();

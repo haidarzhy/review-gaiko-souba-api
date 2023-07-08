@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Models\Contact;
+use App\Models\Inquiry;
 use Illuminate\Http\Request;
 
 class DashboardController extends Controller
@@ -25,9 +26,14 @@ class DashboardController extends Controller
         ->limit(5)
         ->get();
 
+        $inquiryTotalCount = Inquiry::count();
+        $inquiries = Inquiry::where('confirm', 1)->with(['inquiryQuotes'])->orderBy('id', 'desc')->take(5)->get();
+
         return response()->json([
             'contractors' => $cons,
-            'mails' => $contacts
+            'mails' => $contacts,
+            'inquiryCount' => $inquiryTotalCount,
+            'inquiries' => $inquiries
         ]);
     }
 

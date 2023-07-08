@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\File;
 use Symfony\Component\Finder\Finder;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Storage;
 
 class SettingController extends Controller
@@ -22,6 +23,41 @@ class SettingController extends Controller
     {
         $settings = Setting::first();
         $seos = Seo::first();
+
+        // get site size and cache size
+        $currentPath = App::basePath();
+        $cachePath = storage_path('framework/cache');
+
+        $updateData = [];
+
+        if (File::exists($currentPath)) {
+            $finder = new Finder();
+            $finder->files()->in($currentPath);
+
+            $totalSize = 0;
+
+            foreach ($finder as $file) {
+                $totalSize += $file->getSize();
+            }
+            $humanReadableSize = $this->formatSizeUnits($totalSize);
+            $updateData['site_size'] = $humanReadableSize;
+        }
+        if (File::exists($cachePath)) {
+            $finder = new Finder();
+            $finder->files()->in($cachePath);
+
+            $totalSize = 0;
+
+            foreach ($finder as $file) {
+                $totalSize += $file->getSize();
+            }
+            $humanReadableSize = $this->formatSizeUnits($totalSize);
+            $updateData['cache_size'] = $humanReadableSize;
+        }
+
+        $settings->site_size = $updateData['site_size'];
+        $settings->cache_size = $updateData['cache_size'];
+
         return response()->json([
             'setting' => $settings,
             'seo' => $seos
@@ -101,6 +137,7 @@ class SettingController extends Controller
                 'keywords' => isset($data['keywords']) ? $data['keywords']:null,
                 'email' => isset($data['email']) ? $data['email']:null,
                 'footer_text' => isset($data['footer_text']) ? $data['footer_text']:null,
+                'item_per_page' => isset($data['itemPerPage']) ? $data['itemPerPage']:10,
             ];
 
             // upload file if has file
@@ -232,6 +269,23 @@ class SettingController extends Controller
     public function destroy($id)
     {
         //
+    }
+
+    public function clearCache() 
+    {
+        $cacheCommands = array(
+            'event:clear',
+            'view:clear',
+            'cache:clear',
+            'route:clear',
+            'config:clear',
+            'clear-compiled',
+            'optimize:clear'
+        );
+        foreach ($cacheCommands as $command) {
+            Artisan::call($command);
+        }
+        return response()->json("Cache cleared successfully");
     }
 
 

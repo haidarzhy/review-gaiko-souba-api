@@ -84,6 +84,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     // SETTING API
     Route::get('/settings', 'App\Http\Controllers\SettingController@index');
     Route::post('/settings/{id}/update', 'App\Http\Controllers\SettingController@update');
+    Route::get('/settings/clear-cache', 'App\Http\Controllers\SettingController@clearCache');
 
     // DASHBOARD API
     Route::get('/dashboard', 'App\Http\Controllers\DashboardController@index');
@@ -134,7 +135,7 @@ Route::get('/clear-cache', function (Request $request) {
         Artisan::call($command);
     }
 
-   return "Cache cleared successfully";
+   return response()->json("Cache cleared successfully");
 });
 
 
