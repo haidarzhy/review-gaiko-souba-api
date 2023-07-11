@@ -376,8 +376,12 @@ class QuestionnaireController extends Controller
                                 // Extract the IDs from the $dumpInputChoiceData
                                 $choiceIds = array_column($dumpInputChoiceData, 'id');
                                 // Delete records that have IDs not present in $choiceIds
-                                Qa::where('qq_id', $qq->id)->whereNotIn('id', $choiceIds)->delete();
-                                $sa = Qa::upsert($dumpInputChoiceData, ['id'], ['label', 'unit_price', 'image', 'control', 'controlled_id']);
+                                try {
+                                    Qa::where('qq_id', $qq->id)->whereNotIn('id', $choiceIds)->delete();
+                                    $sa = Qa::upsert($dumpInputChoiceData, ['id'], ['label', 'unit_price', 'image', 'control', 'controlled_id']);
+                                } catch (QueryException $e) {
+                                    return response()->json($e->getMessage());
+                                }
                                 if($sa) {
                                     // delete unused images
                                     $databaseImages = Qa::where('image', '!=', null)->pluck('image')->all();

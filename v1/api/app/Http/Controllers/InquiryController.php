@@ -124,8 +124,14 @@ class InquiryController extends Controller
         asort($combinedQuotationIds);
         // sort the index
         $combinedQuotationIds = array_values($combinedQuotationIds);
+        array_unshift($combinedQuotationIds, 1);
 
         $quotations = Quotation::whereIn('id', $combinedQuotationIds)->get();
+
+        // global variables
+        $inquiry = null;
+        $quotationStoreData = [];
+        $quotationTotal = 0;
         
         // check quotation is not empty
         if(count($quotations) > 0) {
@@ -136,12 +142,17 @@ class InquiryController extends Controller
                 $quotation = $quotations[$qIndex];
                 $qcs = $quotation->quotationConditions;
                 $qfs = $quotation->quotationFormulas;
+                $qFTotal = $quotation->formula_total;
+                $qBaseAmount = $quotation->base_amount;
 
                 // global variables
                 $conditionResult = false;
                 $conditionResultArray = [];
                 $formulaResultArray = [];
                 $formulaConditionResult = false;
+                $formulaTotalResult = 0;
+                $quotationCalculationResult = 0;
+
 
                 // check quotation has condition or not
                 if(count($qcs) > 0) {
@@ -257,9 +268,10 @@ class InquiryController extends Controller
                 }
 
                 // check the condition result
+                // Formula Calculation
                 if($conditionResult) {
 
-                    // check quotation has formula or not
+                    // check quotation have formula or not
                     if(count($qfs) > 0) {
 
                         // loop the quotation foumula
@@ -283,7 +295,7 @@ class InquiryController extends Controller
                                 $filteredData = array_values($filteredData);
 
                                 if($filteredData != null && count($filteredData) > 0) {
-                                    
+
                                     for($filteredDataIndex = 0; $filteredDataIndex < count($filteredData); $filteredDataIndex++) {
 
                                         $fD = $filteredData[$filteredDataIndex];
@@ -392,628 +404,226 @@ class InquiryController extends Controller
                                     } else {
 
                                         $formulaResult = round(eval("return $formulaString;"));
+
                                         // check if have formula conditions
                                         if($formulaCondition != null && count($formulaCondition) > 0) {
-
+                                            
                                             for ($fCIndex=0; $fCIndex < count($formulaCondition); $fCIndex++) { 
                                                 
+                                                $formulaConditionIndex = $formulaCondition[$fCIndex];
+                                                $fCMathSymbol = $formulaConditionIndex->mathSymbol;
+                                                $fCSituation = $formulaConditionIndex->situation;
+                                                $fCResult = $formulaConditionIndex->result;
 
+                                                if($fCMathSymbol != null && $fCSituation != null && $formulaResult != null) {
 
-                                            }
-
-                                        }
-
-                                    }
-
-                                    return response()->json([
-                                        'formulaString' => $formulaString,
-                                        'formulaResult' => $formulaResultArray,
-                                    ]);
-
-                                }
-
-                                return response()->json([
-                                    'formulaQNumbers' => $formulaQNumbers,
-                                    'data' => $data,
-                                ]);
-
-                            }
-    
-                        }
-    
-                    }
-
-                }
-
-            }
-
-        }
-
-        return response()->json([
-            'unique' => $combinedQuotationIds,
-            'id1' => $quotationIds1,
-            'id2' => $quotationIds2
-        ]);
-
-        try {
-            if(count($data) > 0) {
-                $total = 0;
-                $finalCalculatedQuotes = [];
-                // get quotations
-                $quotations = Quotation::get();
-                
-                /*--------------------  CREATE INQUIRY -----------------*/
-                // create a inquiry dummy
-                $uuid = Str::uuid()->toString();
-                $inquiry = Inquiry::create([
-                    'uuid' => $uuid,
-                    'confirm' => 0,
-                    'status' => 1,
-                    'order' => 1
-                ]);
-    
-                /*--------------------  LOOP QUOTATION -----------------*/
-                // loop quotations
-                for ($qindex = 0; $qindex < count($quotations); $qindex++) { 
-                    $tFSResult = 0;
-                    // set quotation
-                    $quotation = $quotations[$qindex];
-
-
-                    /*--------------------  CONDITION -----------------*/
-                    if(count($quotation->quotationConditions) > 0) { // condition exists
-
-                        // set conditions of a quotation
-                        $qcs = $quotation->quotationConditions;
-                        $exists = [];
-                        // check conditions
-                        for($qcIndex = 0; $qcIndex < count($qcs); $qcIndex++) {
-                            // set a condition of conditions
-                            $qc = $qcs[$qcIndex];
-                            $existsKey = $qc->condition_id;
-                            if(!array_key_exists($existsKey, $exists)) {
-                                $exists[$existsKey] = [];
-                            }
-                            foreach ($data as $item) { // check the conditions in requested data
-                                if($qc->qq_id == $item['qId']) { // exists in requested data
-                                    try {
-                                        if(isset($qc->qa_id) && isset($item['ansId']) != '' && isset($qc->mathSymbol) && $qc->mathSymbol != null) {
-                                            $conditionAsString = $qc->qa_id.' '.$qc->mathSymbol->sign.' '.$item['ansId'];
-                                            $result = eval("return $conditionAsString;");
-                                            if(isset($existsKey) && isset($exists[$existsKey])) {
-                                                $exists[$existsKey][] = $result;
-                                            }
-                                        }
-                                    } catch (Exception $e) {
-                                        return response()->json('POS-1: '.$e->getMessage());
-                                    }
-                                }
-                            }
-                        }
-
-
-                        if(count($exists) > 0) {
-                            $qConditionResult = false;
-                            // check quotation condition string
-                            if($quotation->condition != null) {
-                                $quoteConditionString = $quotation->condition;
-                                try {
-                                    $replacedFormula = preg_replace_callback('/\b([A-Za-z0-9_]+)\b/', function($matches) use ($exists) {
-                                        $key = $matches[1];
-                                        if (isset($exists[$key])) {
-                                            $value = $exists[$key];
-                                            if (is_array($value) && empty($value)) {
-                                                return "false";
-                                            }
-                                            return is_array($value) ? array_reduce($value, function($carry, $item) {
-                                                return $carry && $item == true ? "true":"false";
-                                            }, true) : $value;
-                                        }
-                                        return $key;
-                                    }, $quoteConditionString);
-
-                                    // run the condition
-                                    $qConditionResult = eval("return $replacedFormula;");
-
-                                } catch (Exception $e) {
-                                    return response()->json('POS-2: '.$e->getMessage());
-                                }
-
-                            } else {
-                                foreach ($exists as $values) {
-                                    if (in_array(false, $values, true)) {
-                                        $qConditionResult = true;
-                                        break;
-                                    }
-                                }
-                            }
-
-
-                            // return response()->json([
-                            //     'data' => $data,
-                            //     'exists' => $exists,
-                            //     'condition' => $qConditionResult
-                            // ]);
-
-                            /*--------------------  FORMULA CALCULATION -----------------*/
-                            // if conditions were true
-                            if($qConditionResult) {
-                                $calculatedFormulas = [];
-                                // calculate formulas
-                                $qfs = $quotation->quotationFormulas;
-
-                                if(count($qfs) > 0) { // if have formulas
-                                    for ($fIndex = 0; $fIndex < count($qfs); $fIndex++) { // loop formulas
-                                        // set formula
-                                        $formulaString = $qfs[$fIndex]->formula;
-
-                                        if($formulaString != null && $formulaString != '') {
-                                            try {
-                                                preg_match_all('/Q\d+/', $formulaString, $matches);
-                                                $QValues = $matches[0];
-                                                $qFIDs = [];
-                                                $QValueFound = true;
-    
-                                                foreach ($QValues as $QValue) {
-                                                    $found = false;
-                                                    foreach ($data as $item) {
-                                                        if ($item["qIndex"] === $QValue) {
-                                                            $found = true;
-                                                            break;
-                                                        }
-                                                    }
-                                                    if (!$found) {
-                                                        $QValueFound = false;
+                                                    $formulaConditionString = $formulaResult.''.$fCMathSymbol->sign.''.$fCSituation;
+                                                    $formulaConditionResult = eval("return $formulaConditionString;");
+                                                    if($formulaConditionResult) {
+                                                        $formulaResultArray[$formulaKey] = $fCResult;
                                                         break;
-                                                    }
-                                                }
-                                            } catch (Exception $e) {
-                                                return response()->json('POS-3: '.$e->getMessage());
-                                            }
-    
-                                            if($QValueFound) {
-                                                // get the values with questionnaire index
-                                                for ($dataIndex = 0; $dataIndex < count($data); $dataIndex++) { 
-                                                    try {
-                                                        if(isset($data[$dataIndex])) {
-                                                            $item = $data[$dataIndex];
-                                                            if(isset($item['qIndex'])) {
-                                                                if (in_array($item['qIndex'], $QValues)) { // check formula values does exists in data
-                                                                    $q = Qq::find($item['qId']);
-                                                                    if($q) {
-                                                                        if($q->qAnsInputType->input != 'text') {
-                                                                            $qa = Qa::find($item['ansId']);
-                                                                            if($qa) {
-                                                                                $qFIDs[] = [
-                                                                                    'qIndex' => $item['qIndex'],
-                                                                                    'qId' => $item['qId'],
-                                                                                    'ansId' => $qa->unit_price != null ? $qa->unit_price:0
-                                                                                ];
-                                                                            }
-                                                                        } else {
-                                                                            $qFIDs[] = [
-                                                                                'qIndex' => $item['qIndex'],
-                                                                                'qId' => $item['qId'],
-                                                                                'ansId' => $item['ansId']
-                                                                            ];
-                                                                        }
-                                                                    }
-                                                                }
-                                                            }
-                                                        }
-                                                    } catch (Exception $e) {
-                                                        return response()->json('POS-4: '.$e->getMessage());
-                                                    }
-                                                }
-                
-                                                // if formula values exists in data
-                                                if(count($qFIDs) > 0) {
-                                                    // replace Q* with values
-                                                    try {
-                                                        array_reduce($qFIDs, function ($carry, $item) use (&$formulaString) {
-                                                            if (strpos($formulaString, $item['qIndex']) !== false) {
-                                                                if($item['ansId'] == null || $item['ansId'] == '') {
-                                                                    $item['ansId'] = 0;
-                                                                }
-                                                                $formulaString = str_replace($item['qIndex'], $item['ansId'], $formulaString);
-                                                            }
-                                                            return $carry;
-                                                        });
-                    
-                                                        // calculate formula
-                                                        $formulaString = str_replace('x', '*', $formulaString);
-                                                        $fSResult = eval("return $formulaString;");
-                                                    } catch (Exception $e) {
-                                                        return response()->json('POS-5: '.$e->getMessage());
-                                                    }
-                
-                                                    // if have conditions
-                                                    if(count($qfs[$fIndex]->quotationFormulaConditions) > 0) {
-                                                        $qFCResult = null;
-                                                        // loop quotation formula conditions
-                                                        try {
-                                                            for ($qfcIndex = 0; $qfcIndex < count($qfs[$fIndex]->quotationFormulaConditions); $qfcIndex++) { 
-                                                                // set quotation formula condition
-                                                                $qFC = $qfs[$fIndex]->quotationFormulaConditions[$qfcIndex];
-                                                                if($qFC != null && $qFC->mathSymbol != null && $fSResult != null && isset($qFc->situation) && $qFC->situation != null) {
-                                                                    $qFCString = $fSResult.' '.$qFC->mathSymbol->sign.' '.$qFC->situation;
-                                                                    $qFCStringResult = eval("return $qFCString;");
-                                                                    if($qFCStringResult) { // check the forumla result condition
-                                                                        $qFCResult = $qFC->result;
-                                                                        break;
-                                                                    } else {
-                                                                        $qFCResult = $fSResult;
-                                                                    }
-                                                                }
-                                                            }
-                                                        } catch (Exception $e) {
-                                                            return response()->json('POS-6: '.$e->getMessage());
-                                                        }
-                
-                                                        if($qFCResult != null) { // set the formula result
-                                                            if($qfs[$fIndex]->formula_total_id != null) {
-                                                                $calculatedFormulas[$qfs[$fIndex]->formula_total_id] = $qFCResult;
-                                                            } else {
-                                                                $calculatedFormulas[] = $qFCResult;
-                                                            }
-                                                        }
-                                                    } else { // does not have formula conditions
-                                                        if($qfs[$fIndex]->formula_total_id != null) {
-                                                            $calculatedFormulas[$qfs[$fIndex]->formula_total_id] = $fSResult;
-                                                        } else {
-                                                            $calculatedFormulas[] = $fSResult;
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-
-                                /*--------------------  TOTAL FORMULA CALCULATION -----------------*/
-                                // check the formula result and total formula and calculate them
-                                if(count($calculatedFormulas) > 0 && $quotation->formula_total != null) {
-                                    // if total formula was defined
-                                    try {
-                                        $totalFormulaString = $quotation->formula_total;
-                                        preg_match_all('/F\d+/', $totalFormulaString, $matches);
-                                        $FValues = $matches[0];
-                                        $checkValues = true;
-                                        for ($keyIndex = 0; $keyIndex < count($FValues); $keyIndex++) { 
-                                            if (array_key_exists($FValues[$keyIndex], $calculatedFormulas)) {
-                                                // $checkValues = true;
-                                            } else {
-                                                // $checkValues = false;
-                                                $calculatedFormulas[$FValues[$keyIndex]] = 0;
-                                            }
-                                        }
-
-                                        if($checkValues) { // calculate if values and formula is same
-                                            $totalFormulaString2 = strtr($totalFormulaString, $calculatedFormulas);
-                                            if($totalFormulaString2 != '') {
-                                                $tFSResult = round(eval("return $totalFormulaString2;"));
-                                            }
-                                        } else {
-                                            $tFSResult = 0;
-                                        }
-
-                                    } catch (Exception $e) {
-                                        return response()->json('POS-7: '.$e->getMessage());
-                                    }
-                                } else if(count($calculatedFormulas) > 0) {
-                                    $tFSResult = array_sum($FValues);
-                                }
-
-                            }
-
-                        }
-
-                        
-                    } else { // does not have condition
-
-                        $calculatedFormulas = [];
-                                // calculate formulas
-                                $qfs = $quotation->quotationFormulas;
-
-                                if(count($qfs) > 0) { // if have formulas
-                                    for ($fIndex = 0; $fIndex < count($qfs); $fIndex++) { // loop formulas
-                                        // set formula
-                                        $formulaString = $qfs[$fIndex]->formula;
-
-                                        try {
-                                            preg_match_all('/Q\d+/', $formulaString, $matches);
-                                            $QValues = $matches[0];
-                                            $qFIDs = [];
-                                            $QValueFound = true;
-
-                                            foreach ($QValues as $QValue) {
-                                                $found = false;
-                                                foreach ($data as $item) {
-                                                    if ($item["qIndex"] === $QValue) {
-                                                        $found = true;
-                                                        break;
-                                                    }
-                                                }
-                                                if (!$found) {
-                                                    $QValueFound = false;
-                                                    break;
-                                                }
-                                            }
-                                        } catch (Exception $e) {
-                                            return response()->json('POS-3: '.$e->getMessage());
-                                        }
-
-                                        if($QValueFound) {
-                                            // get the values with questionnaire index
-                                            for ($dataIndex = 0; $dataIndex < count($data); $dataIndex++) { 
-                                                try {
-                                                    if(isset($data[$dataIndex])) {
-                                                        $item = $data[$dataIndex];
-                                                        if(isset($item['qIndex'])) {
-                                                            if (in_array($item['qIndex'], $QValues)) { // check formula values does exists in data
-                                                                $q = Qq::find($item['qId']);
-                                                                if($q) {
-                                                                    if($q->qAnsInputType->input != 'text') {
-                                                                        $qa = Qa::find($item['ansId']);
-                                                                        if($qa) {
-                                                                            $qFIDs[] = [
-                                                                                'qIndex' => $item['qIndex'],
-                                                                                'qId' => $item['qId'],
-                                                                                'ansId' => $qa->unit_price != null ? $qa->unit_price:0
-                                                                            ];
-                                                                        }
-                                                                    } else {
-                                                                        $qFIDs[] = [
-                                                                            'qIndex' => $item['qIndex'],
-                                                                            'qId' => $item['qId'],
-                                                                            'ansId' => $item['ansId']
-                                                                        ];
-                                                                    }
-                                                                }
-                                                            }
-                                                        }
-                                                    }
-                                                } catch (Exception $e) {
-                                                    return response()->json('POS-4: '.$e->getMessage());
-                                                }
-                                            }
-            
-                                            // if formula values exists in data
-                                            if(count($qFIDs) > 0) {
-                                                // replace Q* with values
-                                                try {
-                                                    array_reduce($qFIDs, function ($carry, $item) use (&$formulaString) {
-                                                        if (strpos($formulaString, $item['qIndex']) !== false) {
-                                                            if($item['ansId'] == null || $item['ansId'] == '') {
-                                                                $item['ansId'] = 0;
-                                                            }
-                                                            $formulaString = str_replace($item['qIndex'], $item['ansId'], $formulaString);
-                                                        }
-                                                        return $carry;
-                                                    });
-                
-                                                    // calculate formula
-                                                    $formulaString = str_replace('x', '*', $formulaString);
-                                                    $fSResult = eval("return $formulaString;");
-
-                                                } catch (Exception $e) {
-                                                    return response()->json('POS-5: '.$e->getMessage());
-                                                }
-
-
-            
-                                                // if have conditions
-                                                if(count($qfs[$fIndex]->quotationFormulaConditions) > 0) {
-                                                    $qFCResult = null;
-                                                    // loop quotation formula conditions
-                                                    try {
-                                                        for ($qfcIndex = 0; $qfcIndex < count($qfs[$fIndex]->quotationFormulaConditions); $qfcIndex++) { 
-                                                            // set quotation formula condition
-                                                            $qFC = $qfs[$fIndex]->quotationFormulaConditions[$qfcIndex];
-                                                            if($qFC != null && $qFC->mathSymbol != null && $fSResult != null && isset($qFc->situation) && $qFC->situation != null) {
-                                                                $qFCString = $fSResult.' '.$qFC->mathSymbol->sign.' '.$qFC->situation;
-                                                                $qFCStringResult = eval("return $qFCString;");
-                                                                if($qFCStringResult) { // check the forumla result condition
-                                                                    $qFCResult = $qFC->result;
-                                                                    break;
-                                                                } else {
-                                                                    $qFCResult = $fSResult;
-                                                                }
-                                                            }
-                                                        }
-                                                    } catch (Exception $e) {
-                                                        return response()->json('POS-6: '.$e->getMessage());
-                                                    }
-            
-                                                    if($qFCResult != null) { // set the formula result
-                                                        if($qfs[$fIndex]->formula_total_id != null) {
-                                                            $calculatedFormulas[$qfs[$fIndex]->formula_total_id] = $qFCResult;
-                                                        } else {
-                                                            $calculatedFormulas[] = $qFCResult;
-                                                        }
-                                                    }
-                                                } else { // does not have formula conditions
-                                                    if($qfs[$fIndex]->formula_total_id != null) {
-                                                        $calculatedFormulas[$qfs[$fIndex]->formula_total_id] = $fSResult;
                                                     } else {
-                                                        $calculatedFormulas[] = $fSResult;
+                                                        $formulaResultArray[$formulaKey] = 0;
                                                     }
+
+                                                } else { 
+
+                                                    $formulaResultArray[$formulaKey] = 0;
+
                                                 }
                                             }
-                                        }
-                                    }
-                                }
 
-
-                                /*--------------------  TOTAL FORMULA CALCULATION -----------------*/
-                                // check the formula result and total formula and calculate them
-                                if(count($calculatedFormulas) > 0 && $quotation->formula_total != null) {
-                                    // if total formula was defined
-                                    try {
-                                        $totalFormulaString = $quotation->formula_total;
-                                        preg_match_all('/F\d+/', $totalFormulaString, $matches);
-                                        $FValues = $matches[0];
-                                        $checkValues = true;
-                                        for ($keyIndex = 0; $keyIndex < count($FValues); $keyIndex++) { 
-                                            if (array_key_exists($FValues[$keyIndex], $calculatedFormulas)) {
-                                                // $checkValues = true;
-                                            } else {
-                                                // $checkValues = false;
-                                                $calculatedFormulas[$FValues[$keyIndex]] = 0;
-                                            }
-                                        }
-
-                                        if($checkValues) { // calculate if values and formula is same
-                                            $totalFormulaString2 = strtr($totalFormulaString, $calculatedFormulas);
-                                            if($totalFormulaString2 != null) {
-                                                $tFSResult = round(eval("return $totalFormulaString2;"));
-                                            }
                                         } else {
-                                            $tFSResult = 0;
+                                            $formulaResultArray[$formulaKey] = $formulaResult;
                                         }
 
-                                    } catch (Exception $e) {
-                                        return response()->json('POS-7: '.$e->getMessage());
                                     }
-                                } else if(count($calculatedFormulas) > 0) {
-                                    $tFSResult = array_sum($FValues);
-                                }
-                        
-                    }
 
+                                } else { // quotation have formula but required values does not have in data
+                                    $formulaResultArray[$formulaKey] = 0;
+                                }
+
+                            }
     
-                    /*--------------------  FINAL CALCULATION -----------------*/
-                    // final calculation
-                    try {
-                        if($quotation->q_name == '水盛遣方(みずもりやりかた）'){
-                            array_push($finalCalculatedQuotes, [
-                                'quotation_id' => $quotation->id,
-                                'quantity' => 1,
-                                'unit_price' => round($quotation->base_amount),
-                                'amount' => round($quotation->base_amount),
-                                'inquiry_id' => $inquiry->id,
-                                'created_at' => $currentTimestamp,
-                                'updated_at' => $currentTimestamp
-                            ]);
-                            $total += $quotation->base_amount;
-                        } else if($tFSResult > 0 && $quotation->base_amount != null) {
-                            array_push($finalCalculatedQuotes, [
-                                'quotation_id' => $quotation->id,
-                                'quantity' => round($tFSResult),
-                                'unit_price' => $quotation->base_amount,
-                                'amount' => round($quotation->base_amount * $tFSResult),
-                                'inquiry_id' => $inquiry->id,
-                                'created_at' => $currentTimestamp,
-                                'updated_at' => $currentTimestamp
-                            ]);
-                            $total += round($quotation->base_amount * $tFSResult);
-                        } else if($tFSResult > 0  && $quotation->base_amount == null) {
-                            // array_push($finalCalculatedQuotes, [
-                            //     'quotation_id' => $quotation->id,
-                            //     'quantity' => round($tFSResult),
-                            //     'unit_price' => 1,
-                            //     'amount' => round($tFSResult),
-                            //     'inquiry_id' => $inquiry->id,
-                            //     'created_at' => $currentTimestamp,
-                            //     'updated_at' => $currentTimestamp
-                            // ]);
-                            // $total += $tFSResult;
-                        } else if($tFSResult > 0  && $quotation->base_amount != null) {
-                            array_push($finalCalculatedQuotes, [
-                                'quotation_id' => $quotation->id,
-                                'quantity' => 1,
-                                'unit_price' => $quotation->base_amount,
-                                'amount' => $quotation->base_amount,
-                                'inquiry_id' => $inquiry->id,
-                                'created_at' => $currentTimestamp,
-                                'updated_at' => $currentTimestamp
-                            ]);
-                            $total += $quotation->base_amount;
-                        } else {
-                            // array_push($finalCalculatedQuotes, [
-                            //     'quotation_id' => $quotation->id,
-                            //     'quantity' => 0,
-                            //     'unit_price' => 0,
-                            //     'amount' => 0,
-                            //     'inquiry_id' => $inquiry->id,
-                            //     'created_at' => $currentTimestamp,
-                            //     'updated_at' => $currentTimestamp
-                            // ]);
-                            // $total += 0;
                         }
-                
-                    } catch (Exception $e) {
-                        return response()->json('POS-8: '.$e->getMessage());
-                    }
+    
+                    } 
 
                 }
 
-                /*--------------------  INSERT DATA -----------------*/
-                // store the request data 
-                try {
-                    $data = array_map(function ($item) use ($currentTimestamp, $inquiry) {
-                        $item['q_index'] = $item['qIndex'];
-                        $item['qq_id'] = $item['qId'];
-    
-                        if(!is_array($item['ansId'])) { // single select
-                            // check the qa id
-                            $c = Qa::where('id', $item['ansId'])->where('qq_id', $item['qq_id'])->first();
-                            if($c) {
-                                $item['qa_id'] = $item['ansId'];
-                                $item['qa_value'] = null;
+                // check the condition result and check the formula result
+                // Total formula calculation
+                if($conditionResult && count($formulaResultArray) && $qFTotal != null) {
+
+                    // Get the F* from total formula string
+                    preg_match_all('/F\d+/', $qFTotal, $matches);
+                    $formulaFNumbers = array_unique($matches[0]);
+
+                    if($formulaFNumbers != null && count($formulaFNumbers) > 0) {
+
+                        foreach ($formulaFNumbers as $ffN) {
+                            
+                            if(isset($formulaResultArray[$ffN])) {
+                                $qFTotal = str_replace($ffN, $formulaResultArray[$ffN], $qFTotal);
                             } else {
-                                $item['qa_id'] = null;
-                                $item['qa_value'] = $item['ansId'];
+                                $qFTotal = str_replace($ffN, 0, $qFTotal);
                             }
-                        } else { // multi select
-                            if(count($item['ansId']) > 0) {
-                                for ($i=0; $i < count($item['ansId']); $i++) { 
-                                    // check the qa id
-                                    $c = Qa::where('id', $item['ansId'][$i])->where('qq_id', $item['qq_id'])->first();
-                                    if($c) {
-                                        $item['qa_id'] = $item['ansId'][$i];
-                                        $item['qa_value'] = null;
-                                    } else {
-                                        $item['qa_id'] = null;
-                                        $item['qa_value'] = $item['ansId'][$i];
-                                    }
-                                }
-                            }
-                        }
-        
-                        unset($item['qIndex']);
-                        unset($item['qId']);
-                        unset($item['ansId']);
-        
-                        return array_merge(
-                            [
-                                'inquiry_id' => $inquiry->id,
-                                'created_at' => $currentTimestamp,
-                                'updated_at' => $currentTimestamp
-                            ],
-                            $item
-                        );
-                    }, $data);
-                } catch (Exception $e) {
-                    return response()->json('POS-9: '.$e->getMessage());
-                }
-    
-                $inquiryQaAns = InquiryQaAns::insert($data);
-                
-                // store the inquiry quotes
-                $inquiryQuote = InquiryQuote::insert($finalCalculatedQuotes);
 
-                // update total
-                $inquiry->total = $total;
-                $inquiry->save();
+                        }
+
+                        if (preg_match('/[a-zA-Z]/', $qFTotal)) { 
+
+                            $formulaTotalResult = 0;
+
+                        } else {
+
+                            $formulaTotalResult = eval("return $qFTotal;");
+
+                        }
+
+                    }
+
+                }
+
+                // Calculate quotation total amount
+                if($conditionResult) {
+                    if($qBaseAmount != null && $qBaseAmount > 0 && $formulaTotalResult > 0) { // check quotation have base_price or not
+
+                        $quotationCalculationResult = round($qBaseAmount * $formulaTotalResult);
+                        $quotationTotal += $quotationCalculationResult;
     
-                return response()->json($inquiry->uuid);
+                    } else if($qBaseAmount != null && $qBaseAmount > 0) {
     
+                        $quotationCalculationResult = round($qBaseAmount * 1);
+                        $quotationTotal += $quotationCalculationResult;
+                    }
+                }
+
+                // create a inquiry if condition is true
+                if($conditionResult) {
+                    // create a inquiry dummy
+                    $uuid = Str::uuid()->toString();
+                    $inquiry = Inquiry::create([
+                        'uuid' => $uuid,
+                        'confirm' => 0,
+                        'status' => 1,
+                        'order' => 1
+                    ]);
+
+                    // create a dump object to store
+                    if($quotation->id == 1) { // check the quotation is area or not
+
+                        array_push($quotationStoreData, [
+                            'quotation_id' => $quotation->id,
+                            'quantity' => 1,
+                            'unit_price' => $quotation->base_amount,
+                            'amount' => $quotation->base_amount,
+                            'inquiry_id' => $inquiry->id,
+                            'created_at' => $currentTimestamp,
+                            'updated_at' => $currentTimestamp
+                        ]);
+
+                    } else if($formulaTotalResult > 0 && $quotationCalculationResult > 0) {
+
+                        array_push($quotationStoreData, [
+                            'quotation_id' => $quotation->id,
+                            'quantity' => $formulaTotalResult,
+                            'unit_price' => $quotation->base_amount,
+                            'amount' => $quotationCalculationResult,
+                            'inquiry_id' => $inquiry->id,
+                            'created_at' => $currentTimestamp,
+                            'updated_at' => $currentTimestamp
+                        ]);
+
+                    } else if($quotationCalculationResult > 0){
+
+                        array_push($quotationStoreData, [
+                            'quotation_id' => $quotation->id,
+                            'quantity' => 1,
+                            'unit_price' => $quotation->base_amount,
+                            'amount' => $quotationCalculationResult,
+                            'inquiry_id' => $inquiry->id,
+                            'created_at' => $currentTimestamp,
+                            'updated_at' => $currentTimestamp
+                        ]);
+
+                    }
+                }
+
             }
-        } catch (\Exception $e) {
-            return response()->json($e->getMessage());
+
         }
-        
+
+        // store the datas
+        if($inquiry != null && count($quotationStoreData) > 0) {
+
+            $data = array_map(function ($item) use ($currentTimestamp, $inquiry) {
+                $item['q_index'] = $item['qIndex'];
+                $item['qq_id'] = $item['qId'];
+
+                if(!is_array($item['ansId'])) { // single select
+                    // check the qa id
+                    $c = Qa::where('id', $item['ansId'])->where('qq_id', $item['qq_id'])->first();
+                    if($c) {
+                        $item['qa_id'] = $item['ansId'];
+                        $item['qa_value'] = null;
+                    } else {
+                        $item['qa_id'] = null;
+                        $item['qa_value'] = $item['ans'];
+                    }
+                } else { // multi select
+                    if(count($item['ansId']) > 0) {
+                        for ($i=0; $i < count($item['ansId']); $i++) { 
+                            // check the qa id
+                            $c = Qa::where('id', $item['ansId'][$i])->where('qq_id', $item['qq_id'])->first();
+                            if($c) {
+                                $item['qa_id'] = $item['ansId'][$i];
+                                $item['qa_value'] = null;
+                            } 
+                        }
+                    }
+                }
+
+                unset($item['qIndex']);
+                unset($item['qId']);
+                unset($item['ansId']);
+                unset($item['ans']);
+
+                return array_merge(
+                    [
+                        'inquiry_id' => $inquiry->id,
+                        'created_at' => $currentTimestamp,
+                        'updated_at' => $currentTimestamp
+                    ],
+                    $item
+                );
+            }, $data);
+
+            try {
+                $inquiryQaAns = InquiryQaAns::insert($data);
+            } catch (QueryException $e) {
+                return response()->json($e->getMessage());
+            }
+
+            try {
+                $inquiryQuote = InquiryQuote::insert($quotationStoreData);
+            } catch (QueryException $e) {
+                return response()->json($e->getMessage());
+            }
+            
+            
+            // update total
+            try {
+                $inquiry->total = $quotationTotal;
+                $inquiry->save();
+            } catch (QueryException $e) {
+                return response()->json($e->getMessage());
+            }
+    
+            return response()->json($inquiry->uuid);
+
+        }
+
         return response()->json(0);
     }
 
