@@ -52,7 +52,9 @@ class InquiryController extends Controller
                         $dIqs = [];
                         $dIqs['id'] = $iq->id;
                         $dIqs['construction_schedule'] = $iq->construction_schedule;
-                        $dIqs['address'] = $iq->address01.' '.$iq->address02;
+                        $dIqs['area'] = $iq->area;
+                        $dIqs['city'] = $iq->city;
+                        $dIqs['address'] = $iq->address02;
                         $dIqs['total'] = $iq->total;
                         if(isset($iq->inquiryQaAns) && $iq->inquiryQaAns != null && count($iq->inquiryQaAns) > 0) {
                             $iqas = $iq->inquiryQaAns[0];
@@ -60,7 +62,7 @@ class InquiryController extends Controller
                                 $dIqs['area'] = $iqas->qa->label;
                             }
                         }
-                        if(isset($dIqs['area']) && $userArea == $dIqs['area']) {
+                        if((isset($dIqs['area']) && $userArea == $dIqs['area']) || $userArea == $iq->area) {
                             array_push($dumpIqs, $dIqs);
                         }
                     }
