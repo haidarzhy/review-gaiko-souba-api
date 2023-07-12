@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Exception;
+use ParseError;
 use App\Models\Qa;
 use App\Models\Qq;
 use Carbon\Carbon;
@@ -126,7 +127,10 @@ class InquiryController extends Controller
         asort($combinedQuotationIds);
         // sort the index
         $combinedQuotationIds = array_values($combinedQuotationIds);
-        array_unshift($combinedQuotationIds, 1);
+        $firstQuotation = Quotation::where('q_name', '水盛遣方(みずもりやりかた）')->first();
+        if($firstQuotation) {
+            array_unshift($combinedQuotationIds, $firstQuotation->id);
+        }
 
         $quotations = Quotation::whereIn('id', $combinedQuotationIds)->get();
 
@@ -190,28 +194,57 @@ class InquiryController extends Controller
 
                         if($filteredData != null && count($filteredData) > 0) {
 
-                            // loop filtered data
-                            foreach($filteredData as $fD) {
+                            try {
+                                // loop filtered data
+                                foreach($filteredData as $fD) {
 
-                                // check all required fields
-                                if($conditionQqId != null && $conditionAnsId != null && $conditionMathSymbol != null && isset($fD['qId']) && $fD['qId'] != null && isset($fD['ansId']) && $fD['ansId'] != null) {
+                                    // check all required fields
+                                    if($conditionQqId != null && $conditionAnsId != null && $conditionMathSymbol != null && isset($fD['qId']) && $fD['qId'] != null && isset($fD['ansId']) && $fD['ansId'] != null) {
 
-                                    if(is_array($fD['ansId'])) { // check ansId is array or not
+                                        if(is_array($fD['ansId'])) { // check ansId is array or not
 
-                                        foreach($fD['ansId'] as $fd) {
+                                            foreach($fD['ansId'] as $fd) {
 
-                                            if(is_numeric($fd)) {
+                                                if(is_numeric($fd)) {
 
-                                                $conditionAsString = $conditionAnsId.' '.$conditionMathSymbol->sign.' '.$fd;
+                                                    $conditionAsString = $conditionAnsId.' '.$conditionMathSymbol->sign.' '.$fd;
+                                                    
+                                                } else {
+
+                                                    $replacement = "false";
+                                                    $conditionAsString = $conditionAnsId.' '.$conditionMathSymbol->sign.' '.$replacement;
+        
+                                                }
+
+                                                try {
+                                                    $result = eval("return $conditionAsString;");
+                                                } catch (ParseError $e) {
+                                                    return response()->json('POS - 1.0:'.$e->getMessage());
+                                                }
+                                                if(isset($conditionKey) && isset($conditionResultArray[$conditionKey])) {
+                                                    $conditionResultArray[$conditionKey][] = $result;
+                                                }
+
+                                            }
+
+                                        } else {
+
+                                            if(is_numeric($fD['ansId'])) {
+
+                                                $conditionAsString = $conditionAnsId.' '.$conditionMathSymbol->sign.' '.$fD['ansId'];
                                                 
                                             } else {
 
                                                 $replacement = "false";
                                                 $conditionAsString = $conditionAnsId.' '.$conditionMathSymbol->sign.' '.$replacement;
-    
+
                                             }
 
-                                            $result = eval("return $conditionAsString;");
+                                            try {
+                                                $result = eval("return $conditionAsString;");
+                                            } catch (ParseError $e) {
+                                                return response()->json('POS - 1.0:'.$e->getMessage());
+                                            }
                                             if(isset($conditionKey) && isset($conditionResultArray[$conditionKey])) {
                                                 $conditionResultArray[$conditionKey][] = $result;
                                             }
@@ -220,30 +253,13 @@ class InquiryController extends Controller
 
                                     } else {
 
-                                        if(is_numeric($fD['ansId'])) {
-
-                                            $conditionAsString = $conditionAnsId.' '.$conditionMathSymbol->sign.' '.$fD['ansId'];
-                                            
-                                        } else {
-
-                                            $replacement = "false";
-                                            $conditionAsString = $conditionAnsId.' '.$conditionMathSymbol->sign.' '.$replacement;
-
-                                        }
-
-                                        $result = eval("return $conditionAsString;");
-                                        if(isset($conditionKey) && isset($conditionResultArray[$conditionKey])) {
-                                            $conditionResultArray[$conditionKey][] = $result;
-                                        }
+                                        $conditionResultArray[$conditionKey][] = false;
 
                                     }
 
-                                } else {
-
-                                    $conditionResultArray[$conditionKey][] = false;
-
                                 }
-
+                            } catch (Exception $e) {
+                                return response()->json('POS - 1:'.$e->getMessage());
                             }
 
                         }
@@ -255,28 +271,49 @@ class InquiryController extends Controller
                 // check quotation condition
                 if($quotation->condition != null) {
 
-                    $qCString = $quotation->condition;
-                    $replacedFormula = preg_replace_callback('/\b([A-Za-z0-9_]+)\b/', function($matches) use ($conditionResultArray) {
-                        $key = $matches[1];
-                        if (isset($conditionResultArray[$key])) {
-                            $value = $conditionResultArray[$key];
-                            if (is_array($value) && empty($value)) {
-                                return "false";
-                            }
-                            return is_array($value) ? array_reduce($value, function($carry, $item) {
-                                return $carry && $item == true ? "true":"false";
-                            }, true) : $value;
-                        }
-                        return $key;
-                    }, $qCString);
+                    try {
+                        $qCString = $quotation->condition;
+                        $cCount = substr_count($qCString, "C");
 
-                    $conditionResult = eval("return $replacedFormula;");
+
+                        
+                        if(count($conditionResultArray) == $cCount) {
+                            $replacedFormula = preg_replace_callback('/\b([A-Za-z0-9_]+)\b/', function($matches) use ($conditionResultArray) {
+                                $key = $matches[1];
+                                if (isset($conditionResultArray[$key])) {
+                                    $value = $conditionResultArray[$key];
+                                    if (is_array($value) && empty($value)) {
+                                        return "false";
+                                    }
+                                    return is_array($value) ? array_reduce($value, function($carry, $item) {
+                                        return $carry && $item == true ? "true":"false";
+                                    }, true) : $value;
+                                }
+                                return $key;
+                            }, $qCString);
+
+                            
+                            
+    
+                            try {
+                                $conditionResult = eval("return $replacedFormula;");
+                            } catch (ParseError $e) {
+                                return response()->json('POS - 1.1:'.$e->getMessage());
+                            }
+
+                        } else {
+                            $conditionResult = false;
+                        }
+                    } catch (Exception $e) {
+                        return response()->json('POS - 2:'.$e->getMessage());
+                    }
 
                 } else {
                     // set the condition resutl to true if there's no condition
                     $conditionResult = true;
 
                 }
+
 
                 // check the condition result
                 // Formula Calculation
@@ -295,12 +332,16 @@ class InquiryController extends Controller
 
                             if($formulaString != null && $formulaString != '') {
 
-                                preg_match_all('/Q\d+/', $formulaString, $matches);
-                                $formulaQNumbers = array_unique($matches[0]);
+                                try {
+                                    preg_match_all('/Q\d+/', $formulaString, $matches);
+                                    $formulaQNumbers = array_unique($matches[0]);
 
-                                $filteredData = array_filter($data, function ($item) use ($formulaQNumbers) {
-                                    return in_array($item['qIndex'], $formulaQNumbers);
-                                });
+                                    $filteredData = array_filter($data, function ($item) use ($formulaQNumbers) {
+                                        return in_array($item['qIndex'], $formulaQNumbers);
+                                    });
+                                } catch (Exception $e) {
+                                    return response()->json('POS - 3:'.$e->getMessage());
+                                }
                                 
                                 // Convert the filtered result back to an indexed array
                                 $filteredData = array_values($filteredData);
@@ -316,62 +357,94 @@ class InquiryController extends Controller
                                             // answer input type are radio or checkbox
                                             if(is_array($fD['ansId'])) { // check ansId is array or not
 
-                                                for($fDIndex = 0; $fDIndex < count($fD['ansId']); $fDIndex++) {
+                                                try {
+                                                    for($fDIndex = 0; $fDIndex < count($fD['ansId']); $fDIndex++) {
 
-                                                    $fd = $fD['ansId'][$fDIndex];
+                                                        $fd = $fD['ansId'][$fDIndex];
 
-                                                    if(is_numeric($fd)) {
+                                                        if(is_numeric($fd)) {
 
-                                                        if (strpos($formulaString, $fD['qIndex']) !== false) { // check again for sure 
+                                                            if (strpos($formulaString, $fD['qIndex']) !== false) { // check again for sure 
 
-                                                            // get the unit_price
-                                                            $qa = Qa::find($fD['ansId']);
-                                                            if($qa) {
+                                                                // get the unit_price
+                                                                $qa = Qa::find($fD['ansId']);
+                                                                if($qa) {
 
-                                                                $ansUnitPrice = $qa->unit_price;
-                                                                if($ansUnitPrice != null) {
+                                                                    $ansUnitPrice = $qa->unit_price;
+                                                                    if($ansUnitPrice != null) {
 
-                                                                    $formulaString = str_replace($fD['qIndex'], $ansUnitPrice, $formulaString);
+                                                                        $formulaString = str_replace($fD['qIndex'], $ansUnitPrice, $formulaString);
 
-                                                                } else {
+                                                                    } else {
 
-                                                                    $formulaString = str_replace($fD['qIndex'], 0, $formulaString);
+                                                                        $formulaString = str_replace($fD['qIndex'], 0, $formulaString);
+
+                                                                    }
+                                                                    
 
                                                                 }
-                                                                
 
                                                             }
 
                                                         }
 
                                                     }
-
+                                                } catch (Exception $e) {
+                                                    return response()->json('POS - 4:'.$e->getMessage());
                                                 }
                                                 
                                             } else if(is_numeric($fD['ansId'])) {
 
-                                                if (strpos($formulaString, $fD['qIndex']) !== false) { // check again for sure 
+                                                try {
+                                                    if (strpos($formulaString, $fD['qIndex']) !== false) { // check again for sure 
 
-                                                    // get the unit_price
-                                                    $qa = Qa::find($fD['ansId']);
-                                                    if($qa) {
-
-                                                        $ansUnitPrice = $qa->unit_price;
-                                                        if($ansUnitPrice != null) {
-
-                                                            $formulaString = str_replace($fD['qIndex'], $ansUnitPrice, $formulaString);
-
+                                                        // get the unit_price
+                                                        $qa = Qa::find($fD['ansId']);
+                                                        if($qa) {
+    
+                                                            $ansUnitPrice = $qa->unit_price;
+                                                            if($ansUnitPrice != null) {
+    
+                                                                $formulaString = str_replace($fD['qIndex'], $ansUnitPrice, $formulaString);
+    
+                                                            } else {
+    
+                                                                $formulaString = str_replace($fD['qIndex'], 0, $formulaString);
+    
+                                                            }
+                                                            
+    
                                                         } else {
-
+    
                                                             $formulaString = str_replace($fD['qIndex'], 0, $formulaString);
-
+        
                                                         }
-                                                        
+    
+                                                    } else {
+    
+                                                        $formulaString = str_replace($fD['qIndex'], 0, $formulaString);
+    
+                                                    }
+                                                } catch (Exception $e) {
+                                                    return response()->json('POS - 5:'.$e->getMessage());
+                                                }
 
+                                            }
+
+                                        } else if(isset($fD['ans']) && $fD['ans'] != null) { // check if ans is not null
+
+                                            try {
+                                                // answer input type are text
+                                                if(is_numeric($fD['ans'])) {
+
+                                                    if (strpos($formulaString, $fD['qIndex']) !== false) { // check again for sure 
+
+                                                        $formulaString = str_replace($fD['qIndex'], $fD['ans'], $formulaString);
+                                                        
                                                     } else {
 
                                                         $formulaString = str_replace($fD['qIndex'], 0, $formulaString);
-    
+
                                                     }
 
                                                 } else {
@@ -379,28 +452,8 @@ class InquiryController extends Controller
                                                     $formulaString = str_replace($fD['qIndex'], 0, $formulaString);
 
                                                 }
-
-                                            }
-
-                                        } else if(isset($fD['ans']) && $fD['ans'] != null) { // check if ans is not null
-
-                                            // answer input type are text
-                                            if(is_numeric($fD['ans'])) {
-
-                                                if (strpos($formulaString, $fD['qIndex']) !== false) { // check again for sure 
-
-                                                    $formulaString = str_replace($fD['qIndex'], $fD['ans'], $formulaString);
-                                                    
-                                                } else {
-
-                                                    $formulaString = str_replace($fD['qIndex'], 0, $formulaString);
-
-                                                }
-
-                                            } else {
-
-                                                $formulaString = str_replace($fD['qIndex'], 0, $formulaString);
-
+                                            } catch (Exception $e) {
+                                                return response()->json('POS - 6:'.$e->getMessage());
                                             }
 
                                         }
@@ -414,38 +467,50 @@ class InquiryController extends Controller
 
                                     } else {
 
-                                        $formulaResult = round(eval("return $formulaString;"));
-
-                                        // check if have formula conditions
-                                        if($formulaCondition != null && count($formulaCondition) > 0) {
-                                            
-                                            for ($fCIndex=0; $fCIndex < count($formulaCondition); $fCIndex++) { 
-                                                
-                                                $formulaConditionIndex = $formulaCondition[$fCIndex];
-                                                $fCMathSymbol = $formulaConditionIndex->mathSymbol;
-                                                $fCSituation = $formulaConditionIndex->situation;
-                                                $fCResult = $formulaConditionIndex->result;
-
-                                                if($fCMathSymbol != null && $fCSituation != null && $formulaResult != null) {
-
-                                                    $formulaConditionString = $formulaResult.''.$fCMathSymbol->sign.''.$fCSituation;
-                                                    $formulaConditionResult = eval("return $formulaConditionString;");
-                                                    if($formulaConditionResult) {
-                                                        $formulaResultArray[$formulaKey] = $fCResult;
-                                                        break;
-                                                    } else {
-                                                        $formulaResultArray[$formulaKey] = 0;
-                                                    }
-
-                                                } else { 
-
-                                                    $formulaResultArray[$formulaKey] = 0;
-
-                                                }
+                                        try {
+                                            try {
+                                                $formulaResult = round(eval("return $formulaString;"));
+                                            } catch (ParseError $e) {
+                                                return response()->json('POS - 1.2:'.$e->getMessage());
                                             }
+                                            
+                                            // check if have formula conditions
+                                            if($formulaCondition != null && count($formulaCondition) > 0) {
+                                                
+                                                for ($fCIndex=0; $fCIndex < count($formulaCondition); $fCIndex++) { 
+                                                    
+                                                    $formulaConditionIndex = $formulaCondition[$fCIndex];
+                                                    $fCMathSymbol = $formulaConditionIndex->mathSymbol;
+                                                    $fCSituation = $formulaConditionIndex->situation;
+                                                    $fCResult = $formulaConditionIndex->result;
 
-                                        } else {
-                                            $formulaResultArray[$formulaKey] = $formulaResult;
+                                                    if($fCMathSymbol != null && $fCSituation != null && $formulaResult != null) {
+
+                                                        $formulaConditionString = $formulaResult.''.$fCMathSymbol->sign.''.$fCSituation;
+                                                        try {
+                                                            $formulaConditionResult = eval("return $formulaConditionString;");
+                                                        } catch (ParseError $e) {
+                                                            return response()->json('POS - 1.3:'.$e->getMessage());
+                                                        }
+                                                        if($formulaConditionResult) {
+                                                            $formulaResultArray[$formulaKey] = $fCResult;
+                                                            break;
+                                                        } else {
+                                                            $formulaResultArray[$formulaKey] = 0;
+                                                        }
+
+                                                    } else { 
+
+                                                        $formulaResultArray[$formulaKey] = 0;
+
+                                                    }
+                                                }
+
+                                            } else {
+                                                $formulaResultArray[$formulaKey] = $formulaResult;
+                                            }
+                                        } catch (Exception $e) {
+                                            return response()->json('POS - 7:'.$e->getMessage());
                                         }
 
                                     }
@@ -467,49 +532,60 @@ class InquiryController extends Controller
                 if($conditionResult && count($formulaResultArray) && $qFTotal != null) {
 
                     // Get the F* from total formula string
-                    preg_match_all('/F\d+/', $qFTotal, $matches);
-                    $formulaFNumbers = array_unique($matches[0]);
+                    try {
+                        preg_match_all('/F\d+/', $qFTotal, $matches);
+                        $formulaFNumbers = array_unique($matches[0]);
 
-                    if($formulaFNumbers != null && count($formulaFNumbers) > 0) {
+                        if($formulaFNumbers != null && count($formulaFNumbers) > 0) {
 
-                        foreach ($formulaFNumbers as $ffN) {
-                            
-                            if(isset($formulaResultArray[$ffN])) {
-                                $qFTotal = str_replace($ffN, $formulaResultArray[$ffN], $qFTotal);
-                            } else {
-                                $qFTotal = str_replace($ffN, 0, $qFTotal);
+                            foreach ($formulaFNumbers as $ffN) {
+                                
+                                if(isset($formulaResultArray[$ffN])) {
+                                    $qFTotal = str_replace($ffN, $formulaResultArray[$ffN], $qFTotal);
+                                } else {
+                                    $qFTotal = str_replace($ffN, 0, $qFTotal);
+                                }
+
                             }
 
-                        }
+                            if (preg_match('/[a-zA-Z]/', $qFTotal)) { 
 
-                        if (preg_match('/[a-zA-Z]/', $qFTotal)) { 
+                                $formulaTotalResult = 0;
 
-                            $formulaTotalResult = 0;
+                            } else {
+                                try {
+                                    $formulaTotalResult = eval("return $qFTotal;");
+                                } catch (ParseError $e) {
+                                    return response()->json('POS - 1.3:'.$e->getMessage());
+                                }
 
-                        } else {
+                            }
 
-                            $formulaTotalResult = eval("return $qFTotal;");
-
-                        }
-
+                        } 
+                    } catch (Exception $e) {
+                        return response()->json('POS - 8:'.$e->getMessage());
                     }
 
                 }
 
                 // Calculate quotation total amount
                 if($conditionResult) {
-                    if($qBaseAmount != null && $qBaseAmount > 0 && $formulaTotalResult > 0) { // check quotation have base_price or not
+                    try {
+                        if($qBaseAmount != null && $qBaseAmount > 0 && $formulaTotalResult > 0) { // check quotation have base_price or not
 
-                        $quotationCalculationResult = round($qBaseAmount * $formulaTotalResult);
-                        $quotationTotal += $quotationCalculationResult;
-    
-                    } else if($qBaseAmount != null && $qBaseAmount > 0 && ($qfs == null || count($qfs) == 0) ) {
-    
-                        $quotationCalculationResult = round($qBaseAmount * 1);
-                        $quotationTotal += $quotationCalculationResult;
-                    } else {
-                        $quotationCalculationResult += 0;
-                        $quotationTotal += 0;
+                            $quotationCalculationResult = round($qBaseAmount * $formulaTotalResult);
+                            $quotationTotal += $quotationCalculationResult;
+        
+                        } else if($qBaseAmount != null && $qBaseAmount > 0 && ($qfs == null || count($qfs) == 0) ) {
+        
+                            $quotationCalculationResult = round($qBaseAmount * 1);
+                            $quotationTotal += $quotationCalculationResult;
+                        } else {
+                            $quotationCalculationResult += 0;
+                            $quotationTotal += 0;
+                        }
+                    } catch (Exception $e) {
+                        return response()->json('POS - 9:'.$e->getMessage());
                     }
                 }
 
@@ -556,6 +632,8 @@ class InquiryController extends Controller
 
                     }
                 }
+
+
 
             }
 
@@ -637,6 +715,72 @@ class InquiryController extends Controller
     
             return response()->json($inquiry->uuid);
 
+        } else if($inquiry != null && count($data) > 0) {
+            try {
+                $data = array_map(function ($item) use ($currentTimestamp, $inquiry) {
+                    $item['q_index'] = $item['qIndex'];
+                    $item['qq_id'] = $item['qId'];
+    
+                    if(!is_array($item['ansId'])) { // single select
+                        // check the qa id
+                        $c = Qa::where('id', $item['ansId'])->where('qq_id', $item['qq_id'])->first();
+                        if($c) {
+                            $item['qa_id'] = $item['ansId'];
+                            $item['qa_value'] = null;
+                        } else {
+                            $item['qa_id'] = null;
+                            $item['qa_value'] = isset($item['ans']) ? $item['ans']:null;
+                        }
+                    } else { // multi select
+                        if(count($item['ansId']) > 0) {
+                            for ($i=0; $i < count($item['ansId']); $i++) { 
+                                // check the qa id
+                                $c = Qa::where('id', $item['ansId'][$i])->where('qq_id', $item['qq_id'])->first();
+                                if($c) {
+                                    $item['qa_id'] = $item['ansId'][$i];
+                                    $item['qa_value'] = null;
+                                } 
+                            }
+                        }
+                    }
+    
+                    unset($item['qIndex']);
+                    unset($item['qId']);
+                    unset($item['ansId']);
+                    unset($item['ans']);
+    
+                    return array_merge(
+                        [
+                            'inquiry_id' => $inquiry->id,
+                            'created_at' => $currentTimestamp,
+                            'updated_at' => $currentTimestamp
+                        ],
+                        $item
+                    );
+                }, $data);
+            } catch (Exception $e) {
+                return response()->json($e->getMessage());
+            }
+
+            try {
+                $inquiryQaAns = InquiryQaAns::insert($data);
+            } catch (QueryException $e) {
+                return response()->json($e->getMessage());
+            }
+
+            // update total
+            try {
+                $inquiry->total = $quotationTotal;
+                $inquiry->save();
+            } catch (QueryException $e) {
+                return response()->json($e->getMessage());
+            }
+
+            // reset the global variables
+            $quotationStoreData = [];
+            $quotationTotal = 0;
+    
+            return response()->json($inquiry->uuid);
         }
 
         return response()->json(0);

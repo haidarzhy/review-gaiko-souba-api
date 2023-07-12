@@ -8,6 +8,7 @@ use App\Models\Qq;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use App\Models\QAnsInputType;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Storage;
 
@@ -226,14 +227,6 @@ class QuestionnaireController extends Controller
 
                 // check qindex
                 $qindex = intval(substr($data['qindex'], 1));
-                if($qq->qindex != $qindex) {
-                    $existsQindex = Qq::where('qindex', $qindex)->first();
-                    if($existsQindex) {
-                        $existsQindex->qindex = $qq->qindex;
-                        $existsQindex->save();
-                    }
-                } 
-
                 $updateData['qindex'] = $qindex;
 
                 if(isset($data['required'])) {
@@ -244,7 +237,23 @@ class QuestionnaireController extends Controller
                     }
                 }
 
-                $qRes = $qq->update($updateData);
+
+                // Get the current 'qindex' value for the specific item
+                $currentQindex = Qq::where('id', $qq->id)->value('qindex');
+
+                try {
+                    // DB::statement('SET @row := 0;');
+                    // DB::statement('UPDATE qqs SET qindex = (@row := @row + 1) ORDER BY qindex ASC;');
+                    
+                    // Update the 'qindex' values in the database based on the new order
+                    Qq::where('qindex', '>=', $qindex)
+                        ->where('qindex', '<', $currentQindex)
+                        ->increment('qindex');
+                    
+                    $qRes = $qq->update($updateData);
+                } catch (QueryException $e) {
+                   return response()->json($e->getMessage());
+                }
                 if($qRes) {
                     $qq = Qq::find($QID);
                 } else {
