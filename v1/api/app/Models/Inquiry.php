@@ -12,7 +12,7 @@ class Inquiry extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['uuid', 'name', 'kata_name', 'address01', 'address02', 'company_name', 'email', 'tel', 'construction_schedule', 'total', 'confirm', 'status', 'order', 'user_id'];
+    protected $fillable = ['uuid', 'name', 'kata_name', 'area', 'city', 'address02', 'company_name', 'email', 'tel', 'construction_schedule', 'total', 'confirm', 'status', 'order', 'user_id'];
 
     public function inquiryQaAns()
     {

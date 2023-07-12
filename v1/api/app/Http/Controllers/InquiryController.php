@@ -132,6 +132,15 @@ class InquiryController extends Controller
         $inquiry = null;
         $quotationStoreData = [];
         $quotationTotal = 0;
+
+        // create a inquiry dummy
+        $uuid = Str::uuid()->toString();
+        $inquiry = Inquiry::create([
+            'uuid' => $uuid,
+            'confirm' => 0,
+            'status' => 1,
+            'order' => 1
+        ]);
         
         // check quotation is not empty
         if(count($quotations) > 0) {
@@ -492,23 +501,19 @@ class InquiryController extends Controller
                         $quotationCalculationResult = round($qBaseAmount * $formulaTotalResult);
                         $quotationTotal += $quotationCalculationResult;
     
-                    } else if($qBaseAmount != null && $qBaseAmount > 0) {
+                    } else if($qBaseAmount != null && $qBaseAmount > 0 && ($qfs == null || count($qfs) == 0) ) {
     
                         $quotationCalculationResult = round($qBaseAmount * 1);
                         $quotationTotal += $quotationCalculationResult;
+                    } else {
+                        $quotationCalculationResult += 0;
+                        $quotationTotal += 0;
                     }
                 }
 
                 // create a inquiry if condition is true
                 if($conditionResult) {
-                    // create a inquiry dummy
-                    $uuid = Str::uuid()->toString();
-                    $inquiry = Inquiry::create([
-                        'uuid' => $uuid,
-                        'confirm' => 0,
-                        'status' => 1,
-                        'order' => 1
-                    ]);
+                    
 
                     // create a dump object to store
                     if($quotation->id == 1) { // check the quotation is area or not
@@ -557,47 +562,51 @@ class InquiryController extends Controller
         // store the datas
         if($inquiry != null && count($quotationStoreData) > 0) {
 
-            $data = array_map(function ($item) use ($currentTimestamp, $inquiry) {
-                $item['q_index'] = $item['qIndex'];
-                $item['qq_id'] = $item['qId'];
-
-                if(!is_array($item['ansId'])) { // single select
-                    // check the qa id
-                    $c = Qa::where('id', $item['ansId'])->where('qq_id', $item['qq_id'])->first();
-                    if($c) {
-                        $item['qa_id'] = $item['ansId'];
-                        $item['qa_value'] = null;
-                    } else {
-                        $item['qa_id'] = null;
-                        $item['qa_value'] = $item['ans'];
-                    }
-                } else { // multi select
-                    if(count($item['ansId']) > 0) {
-                        for ($i=0; $i < count($item['ansId']); $i++) { 
-                            // check the qa id
-                            $c = Qa::where('id', $item['ansId'][$i])->where('qq_id', $item['qq_id'])->first();
-                            if($c) {
-                                $item['qa_id'] = $item['ansId'][$i];
-                                $item['qa_value'] = null;
-                            } 
+            try {
+                $data = array_map(function ($item) use ($currentTimestamp, $inquiry) {
+                    $item['q_index'] = $item['qIndex'];
+                    $item['qq_id'] = $item['qId'];
+    
+                    if(!is_array($item['ansId'])) { // single select
+                        // check the qa id
+                        $c = Qa::where('id', $item['ansId'])->where('qq_id', $item['qq_id'])->first();
+                        if($c) {
+                            $item['qa_id'] = $item['ansId'];
+                            $item['qa_value'] = null;
+                        } else {
+                            $item['qa_id'] = null;
+                            $item['qa_value'] = isset($item['ans']) ? $item['ans']:null;
+                        }
+                    } else { // multi select
+                        if(count($item['ansId']) > 0) {
+                            for ($i=0; $i < count($item['ansId']); $i++) { 
+                                // check the qa id
+                                $c = Qa::where('id', $item['ansId'][$i])->where('qq_id', $item['qq_id'])->first();
+                                if($c) {
+                                    $item['qa_id'] = $item['ansId'][$i];
+                                    $item['qa_value'] = null;
+                                } 
+                            }
                         }
                     }
-                }
-
-                unset($item['qIndex']);
-                unset($item['qId']);
-                unset($item['ansId']);
-                unset($item['ans']);
-
-                return array_merge(
-                    [
-                        'inquiry_id' => $inquiry->id,
-                        'created_at' => $currentTimestamp,
-                        'updated_at' => $currentTimestamp
-                    ],
-                    $item
-                );
-            }, $data);
+    
+                    unset($item['qIndex']);
+                    unset($item['qId']);
+                    unset($item['ansId']);
+                    unset($item['ans']);
+    
+                    return array_merge(
+                        [
+                            'inquiry_id' => $inquiry->id,
+                            'created_at' => $currentTimestamp,
+                            'updated_at' => $currentTimestamp
+                        ],
+                        $item
+                    );
+                }, $data);
+            } catch (Exception $e) {
+                return response()->json($e->getMessage());
+            }
 
             try {
                 $inquiryQaAns = InquiryQaAns::insert($data);
@@ -619,6 +628,10 @@ class InquiryController extends Controller
             } catch (QueryException $e) {
                 return response()->json($e->getMessage());
             }
+
+            // reset the global variables
+            $quotationStoreData = [];
+            $quotationTotal = 0;
     
             return response()->json($inquiry->uuid);
 
@@ -644,7 +657,8 @@ class InquiryController extends Controller
             $inquiry = Inquiry::where('uuid', $uuid)->update([
                 'name' => $data['fullname'],
                 'kata_name' => $data['kata_fullname'],
-                'address01' => $data['address01'],
+                'area' => $data['area'],
+                'city' => $data['city'],
                 'address02' => $data['address02'],
                 'email' => $data['email'],
                 'tel' => $data['tel'],
@@ -665,22 +679,22 @@ class InquiryController extends Controller
                 'subject' => '掲載完了しました！'
             ];
 
-            try {
-                $m = Mail::to($inq->email)->send(new InquiryThankYouEmail($mailData));
-            } catch (\Exception $e) {
-                return response()->json('POS-1: '.$e->getMessage());
-            }
+            // try {
+            //     $m = Mail::to($inq->email)->send(new InquiryThankYouEmail($mailData));
+            // } catch (\Exception $e) {
+            //     return response()->json('POS-1: '.$e->getMessage());
+            // }
 
-            // $mail = new InquiryThankYouEmail($mailData);
-            // $mailContent = $mail->render();
-            // $subject = '掲載完了しました！';
-            // $recipientEmail = $inq->email;
+            $mail = new InquiryThankYouEmail($mailData);
+            $mailContent = $mail->render();
+            $subject = '掲載完了しました！';
+            $recipientEmail = $inq->email;
 
-            // $headers = "MIME-Version: 1.0" . "\r\n";
-            // $headers .= "Content-type:text/html;charset=UTF-8" . "\r\n";
-            // $headers .= "From: 外構相場.com <info@gaiko-souba.net>" . "\r\n";
+            $headers = "MIME-Version: 1.0" . "\r\n";
+            $headers .= "Content-type:text/html;charset=UTF-8" . "\r\n";
+            $headers .= "From: 外構相場.com <info@gaiko-souba.net>" . "\r\n";
 
-            // $m = mail($recipientEmail, $subject, $mailContent, $headers);
+            $m = mail($recipientEmail, $subject, $mailContent, $headers);
 
             return response()->json($inquiry);
         }
@@ -707,23 +721,23 @@ class InquiryController extends Controller
                         'subject' => 'お問い合わせ受付中！'
                     ];
 
-                    try {
-                        $m = Mail::to($inquiry->email)->send(new InquiryAcceptUserEmail($mailData));
-                    } catch (\Exception $e) {
-                        return response()->json('POS-1: '.$e->getMessage());
-                    }
+                    // try {
+                    //     $m = Mail::to($inquiry->email)->send(new InquiryAcceptUserEmail($mailData));
+                    // } catch (\Exception $e) {
+                    //     return response()->json('POS-1: '.$e->getMessage());
+                    // }
     
                     // send mail to user
-                    // $mail = new InquiryAcceptUserEmail($mailData);
-                    // $mailContent = $mail->render();
-                    // $subject = 'お問い合わせ受付中！';
-                    // $recipientEmail = $inquiry->email;
+                    $mail = new InquiryAcceptUserEmail($mailData);
+                    $mailContent = $mail->render();
+                    $subject = 'お問い合わせ受付中！';
+                    $recipientEmail = $inquiry->email;
     
-                    // $headers = "MIME-Version: 1.0" . "\r\n";
-                    // $headers .= "Content-type:text/html;charset=UTF-8" . "\r\n";
-                    // $headers .= "From: 外構相場.com <info@gaiko-souba.net>" . "\r\n";
+                    $headers = "MIME-Version: 1.0" . "\r\n";
+                    $headers .= "Content-type:text/html;charset=UTF-8" . "\r\n";
+                    $headers .= "From: 外構相場.com <info@gaiko-souba.net>" . "\r\n";
     
-                    // $m = mail($recipientEmail, $subject, $mailContent, $headers);
+                    $m = mail($recipientEmail, $subject, $mailContent, $headers);
                 } catch (\Exception $e) {
                     return response()->json($e->getMessage());
                 }
@@ -735,22 +749,22 @@ class InquiryController extends Controller
                         'subject' => 'お問い合わせ受付中！'
                     ];
 
-                    try {
-                        $m = Mail::to($inquiry->user->email)->send(new InquiryAcceptContractorEmail($mailData2));
-                    } catch (\Exception $e) {
-                        return response()->json('POS-1: '.$e->getMessage());
-                    }
+                    // try {
+                    //     $m = Mail::to($inquiry->user->email)->send(new InquiryAcceptContractorEmail($mailData2));
+                    // } catch (\Exception $e) {
+                    //     return response()->json('POS-1: '.$e->getMessage());
+                    // }
 
-                    // $mail2 = new InquiryAcceptContractorEmail($mailData2);
-                    // $mailContent2 = $mail2->render();
-                    // $subject2 = 'お問い合わせ受付中！';
-                    // $recipientEmail2 = $inquiry->user->email;
+                    $mail2 = new InquiryAcceptContractorEmail($mailData2);
+                    $mailContent2 = $mail2->render();
+                    $subject2 = 'お問い合わせ受付中！';
+                    $recipientEmail2 = $inquiry->user->email;
     
-                    // $headers2 = "MIME-Version: 1.0" . "\r\n";
-                    // $headers2 .= "Content-type:text/html;charset=UTF-8" . "\r\n";
-                    // $headers2 .= "From: 外構相場.com <info@gaiko-souba.net>" . "\r\n";
+                    $headers2 = "MIME-Version: 1.0" . "\r\n";
+                    $headers2 .= "Content-type:text/html;charset=UTF-8" . "\r\n";
+                    $headers2 .= "From: 外構相場.com <info@gaiko-souba.net>" . "\r\n";
     
-                    // $m = mail($recipientEmail2, $subject2, $mailContent2, $headers2);
+                    $m = mail($recipientEmail2, $subject2, $mailContent2, $headers2);
                 } catch (\Exception $e) {
                     return response()->json($e->getMessage());
                 }

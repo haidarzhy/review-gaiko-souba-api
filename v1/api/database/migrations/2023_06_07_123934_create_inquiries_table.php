@@ -18,7 +18,8 @@ class CreateInquiriesTable extends Migration
             $table->string('uuid')->nullable();
             $table->string('name')->nullable();
             $table->string('kata_name')->nullable();
-            $table->text('address01')->nullable();
+            $table->string('area')->nullable();
+            $table->string('city')->nullable();
             $table->text('address02')->nullable();
             $table->string('company_name')->nullable();
             $table->string('email')->nullable();
