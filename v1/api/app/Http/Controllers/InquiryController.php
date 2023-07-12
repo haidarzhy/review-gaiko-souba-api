@@ -681,22 +681,22 @@ class InquiryController extends Controller
                 'subject' => '掲載完了しました！'
             ];
 
-            // try {
-            //     $m = Mail::to($inq->email)->send(new InquiryThankYouEmail($mailData));
-            // } catch (\Exception $e) {
-            //     return response()->json('POS-1: '.$e->getMessage());
-            // }
+            try {
+                $m = Mail::to($inq->email)->send(new InquiryThankYouEmail($mailData));
+            } catch (\Exception $e) {
+                return response()->json('POS-1: '.$e->getMessage());
+            }
 
-            $mail = new InquiryThankYouEmail($mailData);
-            $mailContent = $mail->render();
-            $subject = '掲載完了しました！';
-            $recipientEmail = $inq->email;
+            // $mail = new InquiryThankYouEmail($mailData);
+            // $mailContent = $mail->render();
+            // $subject = '掲載完了しました！';
+            // $recipientEmail = $inq->email;
 
-            $headers = "MIME-Version: 1.0" . "\r\n";
-            $headers .= "Content-type:text/html;charset=UTF-8" . "\r\n";
-            $headers .= "From: 外構相場.com <info@gaiko-souba.net>" . "\r\n";
+            // $headers = "MIME-Version: 1.0" . "\r\n";
+            // $headers .= "Content-type:text/html;charset=UTF-8" . "\r\n";
+            // $headers .= "From: 外構相場.com <info@gaiko-souba.net>" . "\r\n";
 
-            $m = mail($recipientEmail, $subject, $mailContent, $headers);
+            // $m = mail($recipientEmail, $subject, $mailContent, $headers);
 
             return response()->json($inquiry);
         }
@@ -723,23 +723,23 @@ class InquiryController extends Controller
                         'subject' => 'お問い合わせ受付中！'
                     ];
 
-                    // try {
-                    //     $m = Mail::to($inquiry->email)->send(new InquiryAcceptUserEmail($mailData));
-                    // } catch (\Exception $e) {
-                    //     return response()->json('POS-1: '.$e->getMessage());
-                    // }
+                    try {
+                        $m = Mail::to($inquiry->email)->send(new InquiryAcceptUserEmail($mailData));
+                    } catch (\Exception $e) {
+                        return response()->json('POS-1: '.$e->getMessage());
+                    }
     
                     // send mail to user
-                    $mail = new InquiryAcceptUserEmail($mailData);
-                    $mailContent = $mail->render();
-                    $subject = 'お問い合わせ受付中！';
-                    $recipientEmail = $inquiry->email;
+                    // $mail = new InquiryAcceptUserEmail($mailData);
+                    // $mailContent = $mail->render();
+                    // $subject = 'お問い合わせ受付中！';
+                    // $recipientEmail = $inquiry->email;
     
-                    $headers = "MIME-Version: 1.0" . "\r\n";
-                    $headers .= "Content-type:text/html;charset=UTF-8" . "\r\n";
-                    $headers .= "From: 外構相場.com <info@gaiko-souba.net>" . "\r\n";
+                    // $headers = "MIME-Version: 1.0" . "\r\n";
+                    // $headers .= "Content-type:text/html;charset=UTF-8" . "\r\n";
+                    // $headers .= "From: 外構相場.com <info@gaiko-souba.net>" . "\r\n";
     
-                    $m = mail($recipientEmail, $subject, $mailContent, $headers);
+                    // $m = mail($recipientEmail, $subject, $mailContent, $headers);
                 } catch (\Exception $e) {
                     return response()->json($e->getMessage());
                 }
@@ -751,22 +751,22 @@ class InquiryController extends Controller
                         'subject' => 'お問い合わせ受付中！'
                     ];
 
-                    // try {
-                    //     $m = Mail::to($inquiry->user->email)->send(new InquiryAcceptContractorEmail($mailData2));
-                    // } catch (\Exception $e) {
-                    //     return response()->json('POS-1: '.$e->getMessage());
-                    // }
+                    try {
+                        $m = Mail::to($inquiry->user->email)->send(new InquiryAcceptContractorEmail($mailData2));
+                    } catch (\Exception $e) {
+                        return response()->json('POS-1: '.$e->getMessage());
+                    }
 
-                    $mail2 = new InquiryAcceptContractorEmail($mailData2);
-                    $mailContent2 = $mail2->render();
-                    $subject2 = 'お問い合わせ受付中！';
-                    $recipientEmail2 = $inquiry->user->email;
+                    // $mail2 = new InquiryAcceptContractorEmail($mailData2);
+                    // $mailContent2 = $mail2->render();
+                    // $subject2 = 'お問い合わせ受付中！';
+                    // $recipientEmail2 = $inquiry->user->email;
     
-                    $headers2 = "MIME-Version: 1.0" . "\r\n";
-                    $headers2 .= "Content-type:text/html;charset=UTF-8" . "\r\n";
-                    $headers2 .= "From: 外構相場.com <info@gaiko-souba.net>" . "\r\n";
+                    // $headers2 = "MIME-Version: 1.0" . "\r\n";
+                    // $headers2 .= "Content-type:text/html;charset=UTF-8" . "\r\n";
+                    // $headers2 .= "From: 外構相場.com <info@gaiko-souba.net>" . "\r\n";
     
-                    $m = mail($recipientEmail2, $subject2, $mailContent2, $headers2);
+                    // $m = mail($recipientEmail2, $subject2, $mailContent2, $headers2);
                 } catch (\Exception $e) {
                     return response()->json($e->getMessage());
                 }
