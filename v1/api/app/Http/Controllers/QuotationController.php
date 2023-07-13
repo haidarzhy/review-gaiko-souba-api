@@ -34,7 +34,7 @@ class QuotationController extends Controller
     public function create()
     {
         $mathSymbols = MathSymbol::get();
-        $qqs = Qq::select(['id', 'qindex'])->with(['qas'])->orderBy('id', 'asc')->get();
+        $qqs = Qq::select(['id', 'qindex'])->with(['qas'])->orderBy('qindex', 'asc')->get();
         $qas = $qqs->pluck('qas')->flatten()->map(function ($qa) {
             return [
                 'id' => $qa->id,
