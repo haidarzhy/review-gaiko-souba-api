@@ -6,6 +6,7 @@ use App\Models\Cc;
 use App\Models\Area;
 use App\Models\Contact;
 use App\Models\Inquiry;
+use App\Models\Withdrawal;
 use App\Models\PaymentInfo;
 use App\Models\Construction;
 use App\Models\PaymentMethod;
@@ -102,6 +103,11 @@ class User extends Authenticatable
     public function inquiries()
     {
         return $this->hasMany(Inquiry::class);
+    }
+
+    public function withdrawals()
+    {
+        return $this->hasMany(Withdrawal::class);
     }
 
 

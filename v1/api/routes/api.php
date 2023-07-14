@@ -48,6 +48,21 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/contractor/{id}/detail', 'App\Http\Controllers\ContractorController@show');
     Route::delete('/contractor/{id}/deactivate', 'App\Http\Controllers\ContractorController@destroy');
 
+    // LEAVING REASON API
+    Route::get('/leaving-reason', 'App\Http\Controllers\LeavingReasonController@index');
+    Route::post('/leaving-reason/store', 'App\Http\Controllers\LeavingReasonController@store');
+    Route::put('/leaving-reason/{id}/update', 'App\Http\Controllers\LeavingReasonController@update');
+    Route::delete('/leaving-reason/{id}/destroy', 'App\Http\Controllers\LeavingReasonController@destroy');
+
+    // WITHDRAWAL API
+    Route::get('/withdrawal', 'App\Http\Controllers\WithdrawalController@index');
+    Route::post('/withdrawal/store', 'App\Http\Controllers\WithdrawalController@store');
+    Route::get('/withdrawal/create', 'App\Http\Controllers\WithdrawalController@create');
+    Route::put('/withdrawal/{id}/update', 'App\Http\Controllers\WithdrawalController@update');
+    Route::get('/withdrawal/{id}/detail', 'App\Http\Controllers\WithdrawalController@show');
+    Route::post('/withdrawal/{id}/confirm', 'App\Http\Controllers\WithdrawalController@confirm');
+
+
     // USER API
     Route::put('/user/{id}/update', 'App\Http\Controllers\AuthController@update');
     Route::get('/user/{id}/get-card', 'App\Http\Controllers\AuthController@getCard');
