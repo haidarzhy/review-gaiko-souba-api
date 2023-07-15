@@ -3,10 +3,12 @@
 namespace App\Http\Controllers;
 
 use Exception;
+use App\Models\User;
 use App\Models\Withdrawal;
 use Illuminate\Http\Request;
 use App\Mail\WithdrawalEmail;
 use App\Models\LeavingReason;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 
 class WithdrawalController extends Controller
@@ -149,25 +151,54 @@ class WithdrawalController extends Controller
         $w = Withdrawal::where('id', $id)->first();
         if($w) {
 
-            // // stop the payment
-            // $cardData = [
-            //     // 'aid' => 126030, // test account
-            //     'aid' => 125562, // production account
-            //     'gid' => 1,
-            //     'rst' => '',
-            //     'acid' => $data['email'],
-            // ];
+            $user = isset($w->user) && $w->user != null ? $w->user:null;
 
-            // try {
-            //     $response = Http::get('https://credit.j-payment.co.jp/gateway/acsgate.aspx', $cardData);
-            // } catch (\Exception $e) {
-            //     return response()->json('POS1 - '.$e->getMessage());
-            // }
-            
-            return response()->json(1);
-        } else {
-            return response()->json(0);
-        }
+            if($user != null) {
+                if(isset($user->paymentInfo) && $user->paymentInfo != null) {
+                    $paymentInfo = $user->paymentInfo;
+                    $cardData = [];
+                    if(isset($paymentInfo->gid) && $paymentInfo->gid != null && isset($paymentInfo->acid) && $paymentInfo->acid != null) {
+                        // stop the payment
+                        $cardData = [
+                            'gid' => $paymentInfo->gid,
+                            'rst' => 4,
+                            'acid' => $paymentInfo->acid,
+                        ];
+                    } else if(isset($paymentInfo->acid) && $paymentInfo->acid != null) {
+                        // stop the payment
+                        $cardData = [
+                            // 'aid' => 126030, // test account
+                            'aid' => 125562, // production account
+                            'cmd' => 1,
+                            'acid' => $paymentInfo->acid,
+                        ];
+                    }
+
+                    if(count($cardData) > 0) {
+                        try {
+                            $response = Http::get('https://credit.j-payment.co.jp/gateway/acsgate.aspx', $cardData);
+                        } catch (\Exception $e) {
+                            return response()->json('POS1 - '.$e->getMessage());
+                        }
+
+                        $w->status = 0;
+                        $w->save();
+
+                        $u = User::where('id', $w->user_id)->update([
+                            'status' => 0
+                        ]);
+
+                        return response()->json(1);
+                    }
+
+                }
+                
+                return response()->json(0);
+            }
+
+        } 
+
+        return response()->json(0);
     }
 
     /**

@@ -20,6 +20,8 @@ return [
     'allowed_methods' => ['*'],
 
     'allowed_origins' => [
+        'http://127.0.0.1:5174',
+        'http://127.0.0.1:5173',
         'http://localhost:3003', 
         'http://localhost:3000', 
         'https://gaiko-souba-com.icdl.tokyo',
