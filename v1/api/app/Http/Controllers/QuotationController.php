@@ -69,8 +69,6 @@ class QuotationController extends Controller
         $data = $request->all();
         $now = Carbon::now();
 
-        return response()->json($data);
-
         // store quotation
         $quoteName = $data['qName'];
         $quote = Quotation::create([
