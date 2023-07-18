@@ -97,7 +97,6 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('inquiry/{id}/accept', 'App\Http\Controllers\InquiryController@accept');
 
     // SETTING API
-    Route::get('/settings', 'App\Http\Controllers\SettingController@index');
     Route::post('/settings/{id}/update', 'App\Http\Controllers\SettingController@update');
     Route::get('/settings/clear-cache', 'App\Http\Controllers\SettingController@clearCache');
 
@@ -105,6 +104,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/dashboard', 'App\Http\Controllers\DashboardController@index');
 
 });
+
+// CP SETTING
+Route::get('/settings', 'App\Http\Controllers\SettingController@index');
 
 // HEAD
 Route::get('/head', 'App\Http\Controllers\SettingController@getHead');
