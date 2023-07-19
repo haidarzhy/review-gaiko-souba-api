@@ -529,17 +529,21 @@ class InquiryController extends Controller
 
                 // check the condition result and check the formula result
                 // Total formula calculation
-                if($conditionResult && count($formulaResultArray) && $qFTotal != null) {
+                if($conditionResult && count($formulaResultArray) > 0 && $qFTotal != null) {
 
                     // Get the F* from total formula string
                     try {
-                        preg_match_all('/F\d+/', $qFTotal, $matches);
-                        $formulaFNumbers = array_unique($matches[0]);
 
-                        if($formulaFNumbers != null && count($formulaFNumbers) > 0) {
+                        // Check Q and F is exist or not
+                        if (strpos($qFTotal, 'F') !== false && strpos($qFTotal, 'Q') !== false) { // Q and F
 
+
+                            // replace F*
+                            preg_match_all('/F\d+/', $qFTotal, $matches);
+                            $formulaFNumbers = array_unique($matches[0]);
+                            
                             foreach ($formulaFNumbers as $ffN) {
-                                
+                                        
                                 if(isset($formulaResultArray[$ffN])) {
                                     $qFTotal = str_replace($ffN, $formulaResultArray[$ffN], $qFTotal);
                                 } else {
@@ -548,6 +552,61 @@ class InquiryController extends Controller
 
                             }
 
+
+
+
+                            // replace Q*
+                            preg_match_all('/Q\d+/', $qFTotal, $matches);
+                            $formulaQNumbers = array_unique($matches[0]);
+
+
+                            if($formulaQNumbers != null && count($formulaQNumbers) > 0) {
+
+                                foreach ($formulaQNumbers as $fqN) {
+                                    
+                                    // filter the data, take only inlude question index from data
+                                    $filteredData = array_filter($data, function ($item) use ($fqN) {
+                                        return $item["qIndex"] === $fqN;
+                                    });
+
+                                    if($filteredData != null && count($filteredData) > 0) {
+
+                                        foreach ($filteredData as $fdd) {
+
+                                            if(isset($fdd['ansId']) && $fdd['ansId'] != null) {
+                                                if(is_array($fdd['ansId'])) { // check ansId is array or not
+
+                                                    for($i = 0; $i < count($fdd['ansId']); $i++) {
+                                                        if(isset($fdd['ansId'][$i])) {
+                                                            $qa = Qa::where('id', )->first();
+                                                            if($qa && $qa->unit_price != null) {
+                                                                $qFTotal = str_replace($fqN, $qa->unit_price, $qFTotal);
+                                                            }
+                                                        }
+                                                    }
+
+                                                } else {
+
+                                                    $qa = Qa::where('id', $fdd['ansId'])->first();
+                                                    if($qa && $qa->unit_price != null) {
+                                                        $qFTotal = str_replace($fqN, $qa->unit_price, $qFTotal);
+                                                    }
+
+                                                }
+                                            } else if(isset($fdd['ans']) && $fdd['ans'] != null) {
+                                                $qFTotal = str_replace($fqN, $fdd['ans'], $qFTotal);
+                                            }
+
+                                            
+                                        }
+
+                                    }
+
+                                }
+
+                            }
+
+                            // calculate total
                             if (preg_match('/[a-zA-Z]/', $qFTotal)) { 
 
                                 $formulaTotalResult = 0;
@@ -556,16 +615,124 @@ class InquiryController extends Controller
                                 try {
                                     $formulaTotalResult = eval("return $qFTotal;");
                                 } catch (ParseError $e) {
-                                    return response()->json('POS - 1.3:'.$e->getMessage());
+                                    return response()->json('POS - 1.2.3:'.$e->getMessage());
                                 }
 
                             }
 
-                        } 
+                        } else {
+                            
+                            if(strpos($qFTotal, 'Q') !== false) { // Q
+
+                                preg_match_all('/Q\d+/', $qFTotal, $matches);
+                                $formulaQNumbers = array_unique($matches[0]);
+
+                                if($formulaQNumbers != null && count($formulaQNumbers) > 0) {
+
+                                    foreach ($formulaQNumbers as $fqN) {
+                                        
+                                        // filter the data, take only inlude question index from data
+                                        $filteredData = array_filter($data, function ($item) use ($fqN) {
+                                            return $item["qIndex"] === $fqN;
+                                        });
+
+                                        if($filteredData != null && count($filteredData) > 0) {
+
+                                            foreach ($filteredData as $fdd) {
+
+                                                if(isset($fdd['ansId']) && $fdd['ansId'] != null) {
+                                                    if(is_array($fdd['ansId'])) { // check ansId is array or not
+
+                                                        for($i = 0; $i < count($fdd['ansId']); $i++) {
+                                                            if(isset($fdd['ansId'][$i])) {
+                                                                $qa = Qa::where('id', )->first();
+                                                                if($qa && $qa->unit_price != null) {
+                                                                    $qFTotal = str_replace($fqN, $qa->unit_price, $qFTotal);
+                                                                }
+                                                            }
+                                                        }
+    
+                                                    } else {
+    
+                                                        $qa = Qa::where('id', $fdd['ansId'])->first();
+                                                        if($qa && $qa->unit_price != null) {
+                                                            $qFTotal = str_replace($fqN, $qa->unit_price, $qFTotal);
+                                                        }
+    
+                                                    }
+                                                } else if(isset($fdd['ans']) && $fdd['ans'] != null) {
+                                                    $qFTotal = str_replace($fqN, $fdd['ans'], $qFTotal);
+                                                }
+
+                                                
+                                            }
+
+                                        }
+
+                                    }
+
+                                    if (preg_match('/[a-zA-Z]/', $qFTotal)) { 
+
+                                        $formulaTotalResult = 0;
+
+                                    } else {
+                                        try {
+                                            $formulaTotalResult = eval("return $qFTotal;");
+                                        } catch (ParseError $e) {
+                                            return response()->json('POS - 1.2.5:'.$e->getMessage());
+                                        }
+
+                                    }
+
+                                }
+
+                            } else if(strpos($qFTotal, 'F') !== false) { // F
+
+                                preg_match_all('/F\d+/', $qFTotal, $matches);
+                                $formulaFNumbers = array_unique($matches[0]);
+
+                                if($formulaFNumbers != null && count($formulaFNumbers) > 0) {
+
+                                    foreach ($formulaFNumbers as $ffN) {
+                                        
+                                        if(isset($formulaResultArray[$ffN])) {
+                                            $qFTotal = str_replace($ffN, $formulaResultArray[$ffN], $qFTotal);
+                                        } else {
+                                            $qFTotal = str_replace($ffN, 0, $qFTotal);
+                                        }
+
+                                    }
+
+                                    if (preg_match('/[a-zA-Z]/', $qFTotal)) { 
+
+                                        $formulaTotalResult = 0;
+
+                                    } else {
+                                        try {
+                                            $formulaTotalResult = eval("return $qFTotal;");
+                                        } catch (ParseError $e) {
+                                            return response()->json('POS - 1.3:'.$e->getMessage());
+                                        }
+
+                                    }
+
+                                } 
+
+                            }
+
+                        }
+
                     } catch (Exception $e) {
                         return response()->json('POS - 8:'.$e->getMessage());
                     }
 
+
+                } else if($conditionResult && count($formulaResultArray) > 0 && $qFTotal == null) {
+                    $dumpTotalResult = 0;
+                    foreach ($formulaResultArray as $value) {
+                        $dumpTotalResult += $value;
+                    }
+                    $formulaTotalResult = $dumpTotalResult;
                 }
 
                 // Calculate quotation total amount
@@ -632,8 +799,6 @@ class InquiryController extends Controller
 
                     }
                 }
-
-
 
             }
 
