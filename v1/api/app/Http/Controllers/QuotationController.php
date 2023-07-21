@@ -211,6 +211,7 @@ class QuotationController extends Controller
                 'parent_id' => $data['qParent'] != '0' ? $data['qParent']:null
             ]);
 
+
             if($quote) {
 
                 $quote = $quotation;
@@ -240,6 +241,14 @@ class QuotationController extends Controller
                                         array_push($dumpUpdateConditions, $dumpQCondition);
                                     }
                                 }
+
+                                if($condi['id'] != null && count($condi['id']) > 0) {
+                                    $ids = $condi['id'];
+                                    QuotationCondition::where('quotation_id', $quote->id)
+                                        ->whereNotIn('id', $condi['id'])
+                                        ->delete();
+                                }
+
                             } else { //single question
 
                                 $dumpQCondition = [
@@ -252,6 +261,14 @@ class QuotationController extends Controller
                                     // 'created_at' => $now,
                                     // 'updated_at' => $now,
                                 ];
+
+                                if($condi['id'] != null && count($condi['id']) > 0) {
+                                    $ids = $condi['id'];
+                                    QuotationCondition::where('quotation_id', $quote->id)
+                                        ->whereNotIn('id', $condi['id'])
+                                        ->delete();
+                                }
+
                                 array_push($dumpUpdateConditions, $dumpQCondition);
                             }
                         }
@@ -264,43 +281,99 @@ class QuotationController extends Controller
                 }
 
                     // update formula
+                    $fIDs = [];
                     if(isset($data['formula']) && count($data['formula']) > 0) {
+
                         for ($i=0; $i < count($data['formula']); $i++) { 
 
-                            $formula = QuotationFormula::where('id', $data['formula'][$i]['id'])->first();
+                                if($data['formula'][$i]['id'] == null) {
 
-                            $fCondi = $formula->update([
-                                'formula' => $data['formula'][$i]['text'],
-                                'formula_total_id' => 'F'.($i + 1),
-                                'quotation_id' => $quote->id
-                            ]);
-
-                            if($fCondi) {
-                                $dumpUpdateFCondition = [];
-                                if($formula && isset($data['formula'][$i]['fcondition']) && count($data['formula'][$i]['fcondition']) > 0) {
-                                    $fcondition = $data['formula'][$i]['fcondition'];
-                                    for ($j=0; $j < count($fcondition); $j++) { 
-                                        $dumpFCondition = [
-                                            'id' => $fcondition[$j]['id'],
-                                            'math_symbol_id' => $fcondition[$j]['fconSymbol'],
-                                            'situation' => $fcondition[$j]['fconSituation'],
-                                            'result' => $fcondition[$j]['fconResult'],
-                                            'quotation_formula_id' => $formula->id,
-                                            // 'created_at' => $now,
-                                            // 'updated_at' => $now,
-                                        ];
-                                        array_push($dumpUpdateFCondition, $dumpFCondition);
+                                    try {
+                                        $formula = QuotationFormula::create([
+                                            'formula' => $data['formula'][$i]['text'],
+                                            'formula_total_id' => 'F'.($i + 1),
+                                            'quotation_id' => $quote->id
+                                        ]);
+    
+    
+    
+                                        array_push($fIDs, $formula->id);
+                    
+                                        $dumpStoreFCondition = [];
+                                        if($formula && isset($data['formula'][$i]['fcondition']) && count($data['formula'][$i]['fcondition']) > 0) {
+                                            $fcondition = $data['formula'][$i]['fcondition'];
+                                            for ($j=0; $j < count($fcondition); $j++) { 
+                                                $dumpFCondition = [
+                                                    'math_symbol_id' => $fcondition[$j]['fconSymbol'],
+                                                    'situation' => $fcondition[$j]['fconSituation'],
+                                                    'result' => $fcondition[$j]['fconResult'],
+                                                    'quotation_formula_id' => $formula->id,
+                                                    'created_at' => $now,
+                                                    'updated_at' => $now,
+                                                ];
+                                                array_push($dumpStoreFCondition, $dumpFCondition);
+                                            }
+                                        }
+                    
+                                        if(count($dumpStoreFCondition) > 0) {
+                                            QuotationFormulaCondition::insert($dumpStoreFCondition);
+                                        }
+                                    } catch (\Exception $e) {
+                                        return response()->json('POS IF: '.$e->getMessage());
                                     }
-                                }
 
-                                if(count($dumpUpdateFCondition) > 0) {
-                                    QuotationFormulaCondition::upsert($dumpUpdateFCondition, ['id'], ['math_symbol_id', 'situation', 'result', 'quotation_formula_id']);
-                                }
-                            } else {
-                                return response()->json(0);
-                            }
+                                } else {
+                                    try {
+                                        $formula = QuotationFormula::where('id', $data['formula'][$i]['id'])->first();
+                                        array_push($fIDs, $formula->id);
+
+                                        $fCondi = $formula->update([
+                                            'formula' => $data['formula'][$i]['text'],
+                                            'formula_total_id' => 'F'.($i + 1),
+                                            'quotation_id' => $quote->id
+                                        ]);
+
+                                        if($fCondi) {
+                                            $dumpUpdateFCondition = [];
+
+                                            if($formula && isset($data['formula'][$i]['fcondition']) && count($data['formula'][$i]['fcondition']) > 0) {
+                                                $fcondition = $data['formula'][$i]['fcondition'];
+                                                for ($j=0; $j < count($fcondition); $j++) { 
+                                                    $dumpFCondition = [
+                                                        'id' => $fcondition[$j]['id'],
+                                                        'math_symbol_id' => $fcondition[$j]['fconSymbol'],
+                                                        'situation' => $fcondition[$j]['fconSituation'],
+                                                        'result' => $fcondition[$j]['fconResult'],
+                                                        'quotation_formula_id' => $formula->id,
+                                                        // 'created_at' => $now,
+                                                        // 'updated_at' => $now,
+                                                    ];
+                                                    array_push($dumpUpdateFCondition, $dumpFCondition);
+                                                }
+                                            }
+
+                                            if(count($dumpUpdateFCondition) > 0) {
+                                                try {
+                                                    QuotationFormulaCondition::upsert($dumpUpdateFCondition, ['id'], ['math_symbol_id', 'situation', 'result', 'quotation_formula_id']);
+                                                } catch (QueryException $e) {
+                                                    return response()->json($e->getMessage());
+                                                }
+                                            }
+                                        } else {
+                                            return response()->json(0);
+                                        }
+                                    } catch (\Exception $e) {
+                                        return response()->json('POS ELSE: '.$e->getMessage());
+                                    }
+                            } 
                         }
                     }
+
+
+                    QuotationFormula::where('quotation_id', $quote->id)
+                    ->whereNotIn('id', $fIDs)
+                    ->delete();
+
 
                     return response()->json(1);
 
