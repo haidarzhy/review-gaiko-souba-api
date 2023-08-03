@@ -10,6 +10,7 @@ use App\Models\MathSymbol;
 use Illuminate\Http\Request;
 use App\Models\QuotationFormula;
 use App\Models\QuotationCondition;
+use Illuminate\Database\QueryException;
 use App\Models\QuotationFormulaCondition;
 
 class QuotationController extends Controller
@@ -88,12 +89,29 @@ class QuotationController extends Controller
                         if(count($condi['conQqID']) > 1) { //multiple question
                             for ($j=0; $j < count($condi['conQqID']); $j++) { 
                                 $label = $condi['conAnsID']['label'];
-                                $ansID = Qa::where('label', $label)->where('qq_id', $condi['conQqID'][$j])->first();
-                                if($ansID) {
+                                if($label != "どれでも") {
+                                    $ansID = Qa::where('label', $label)->where('qq_id', $condi['conQqID'][$j])->first();
+                                    if($ansID) {
+                                        $dumpQCondition = [
+                                            'qq_id' => $condi['conQqID'][$j],
+                                            'math_symbol_id' => $condi['conSymbol'],
+                                            'qa_id' => $ansID->id,
+                                            'qa_value' => null,
+                                            'qa_any' => 0,
+                                            'condition_id' => 'C'.($i + 1),
+                                            'quotation_id' => $quote->id,
+                                            'created_at' => $now,
+                                            'updated_at' => $now,
+                                        ];
+                                        array_push($dumpStoreQConditions, $dumpQCondition);
+                                    }
+                                } else {
                                     $dumpQCondition = [
                                         'qq_id' => $condi['conQqID'][$j],
                                         'math_symbol_id' => $condi['conSymbol'],
-                                        'qa_id' => $ansID->id,
+                                        'qa_id' => null,
+                                        'qa_value' => null,
+                                        'qa_any' => 1,
                                         'condition_id' => 'C'.($i + 1),
                                         'quotation_id' => $quote->id,
                                         'created_at' => $now,
@@ -103,22 +121,58 @@ class QuotationController extends Controller
                                 }
                             }
                         } else { //single question
-                            $dumpQCondition = [
-                                'qq_id' => $condi['conQqID'][0],
-                                'math_symbol_id' => $condi['conSymbol'],
-                                'qa_id' => $condi['conAnsID']['value'],
-                                'condition_id' => 'C'.($i + 1),
-                                'quotation_id' => $quote->id,
-                                'created_at' => $now,
-                                'updated_at' => $now,
-                            ];
-                            array_push($dumpStoreQConditions, $dumpQCondition);
+                            if(isset($condi['conAnsID']) && $condi['conAnsID'] != null) {
+                                if($condi['conAnsID']['label'] == 'どれでも') {
+                                    $dumpQCondition = [
+                                        'qq_id' => $condi['conQqID'][0],
+                                        'math_symbol_id' => $condi['conSymbol'],
+                                        'qa_id' => null,
+                                        'qa_value' => null,
+                                        'qa_any' => 1,
+                                        'condition_id' => 'C'.($i + 1),
+                                        'quotation_id' => $quote->id,
+                                        'created_at' => $now,
+                                        'updated_at' => $now,
+                                    ];
+                                    array_push($dumpStoreQConditions, $dumpQCondition);
+                                } else {
+                                    $dumpQCondition = [
+                                        'qq_id' => $condi['conQqID'][0],
+                                        'math_symbol_id' => $condi['conSymbol'],
+                                        'qa_id' => $condi['conAnsID']['value'],
+                                        'qa_value' => null,
+                                        'qa_any' => 0,
+                                        'condition_id' => 'C'.($i + 1),
+                                        'quotation_id' => $quote->id,
+                                        'created_at' => $now,
+                                        'updated_at' => $now,
+                                    ];
+                                    array_push($dumpStoreQConditions, $dumpQCondition);
+                                }
+                            } else if(isset($condi['conAnsValue']) && $condi['conAnsValue'] != null) {
+                                $dumpQCondition = [
+                                    'qq_id' => $condi['conQqID'][0],
+                                    'math_symbol_id' => $condi['conSymbol'],
+                                    'qa_id' => null,
+                                    'qa_value' => $condi['conAnsValue'],
+                                    'qa_any' => 0,
+                                    'condition_id' => 'C'.($i + 1),
+                                    'quotation_id' => $quote->id,
+                                    'created_at' => $now,
+                                    'updated_at' => $now,
+                                ];
+                                array_push($dumpStoreQConditions, $dumpQCondition);
+                            }
                         }
                     }
                 }
 
                 if(count($dumpStoreQConditions) > 0) {
-                    QuotationCondition::insert($dumpStoreQConditions);
+                    try {
+                        QuotationCondition::insert($dumpStoreQConditions);
+                    } catch (QueryException $e) {
+                        return response()->json($e->getMessage());
+                    }
                 }
             }
 
@@ -226,17 +280,32 @@ class QuotationController extends Controller
                             if(count($condi['conQqID']) > 1) { //multiple question
                                 for ($j=0; $j < count($condi['conQqID']); $j++) { 
                                     $label = $condi['conAnsID']['label'];
-                                    $ansID = Qa::where('label', $label)->where('qq_id', $condi['conQqID'][$j])->first();
-                                    if($ansID) {
+                                    $label = $condi['conAnsID']['label'];
+                                    if($label != "どれでも") {
+                                        $ansID = Qa::where('label', $label)->where('qq_id', $condi['conQqID'][$j])->first();
+                                        if($ansID) {
+                                            $dumpQCondition = [
+                                                'id' => $condi['id'] != null && count($condi['id']) > $j ? $condi['id'][$j]:null,
+                                                'qq_id' => $condi['conQqID'][$j],
+                                                'math_symbol_id' => $condi['conSymbol'],
+                                                'qa_id' => $ansID->id,
+                                                'qa_value' => null,
+                                                'qa_any' => 0,
+                                                'condition_id' => 'C'.($i + 1),
+                                                'quotation_id' => $quote->id,
+                                            ];
+                                            array_push($dumpUpdateConditions, $dumpQCondition);
+                                        }
+                                    } else {
                                         $dumpQCondition = [
-                                            'id' => $condi['id'] != null && count($condi['id']) > 0 ? $condi['id'][$j]:null,
+                                            'id' => $condi['id'] != null && count($condi['id']) > $j ? $condi['id'][$j]:null,
                                             'qq_id' => $condi['conQqID'][$j],
                                             'math_symbol_id' => $condi['conSymbol'],
-                                            'qa_id' => $ansID->id,
+                                            'qa_id' => null,
+                                            'qa_value' => null,
+                                            'qa_any' => 1,
                                             'condition_id' => 'C'.($i + 1),
                                             'quotation_id' => $quote->id,
-                                            // 'created_at' => $now,
-                                            // 'updated_at' => $now,
                                         ];
                                         array_push($dumpUpdateConditions, $dumpQCondition);
                                     }
@@ -250,17 +319,42 @@ class QuotationController extends Controller
                                 }
 
                             } else { //single question
-
-                                $dumpQCondition = [
-                                    'id' => $condi['id'] != null && count($condi['id']) > 0 ? $condi['id'][0]:null,
-                                    'qq_id' => $condi['conQqID'][0],
-                                    'math_symbol_id' => $condi['conSymbol'],
-                                    'qa_id' => $condi['conAnsID']['value'],
-                                    'condition_id' => 'C'.($i + 1),
-                                    'quotation_id' => $quote->id,
-                                    // 'created_at' => $now,
-                                    // 'updated_at' => $now,
-                                ];
+                                if(isset($condi['conAnsID']) && $condi['conAnsID'] != null) {
+                                    if($condi['conAnsID']['label'] == 'どれでも') {
+                                        $dumpQCondition = [
+                                            'id' => $condi['id'] != null && count($condi['id']) > 0 ? $condi['id'][0]:null,
+                                            'qq_id' => $condi['conQqID'][0],
+                                            'math_symbol_id' => $condi['conSymbol'],
+                                            'qa_id' => null,
+                                            'qa_value' => null,
+                                            'qa_any' => 1,
+                                            'condition_id' => 'C'.($i + 1),
+                                            'quotation_id' => $quote->id,
+                                        ];
+                                    } else {
+                                        $dumpQCondition = [
+                                            'id' => $condi['id'] != null && count($condi['id']) > 0 ? $condi['id'][0]:null,
+                                            'qq_id' => $condi['conQqID'][0],
+                                            'math_symbol_id' => $condi['conSymbol'],
+                                            'qa_id' => $condi['conAnsID']['value'],
+                                            'qa_value' => null,
+                                            'qa_any' => 0,
+                                            'condition_id' => 'C'.($i + 1),
+                                            'quotation_id' => $quote->id,
+                                        ];
+                                    }
+                                } else {
+                                    $dumpQCondition = [
+                                        'id' => $condi['id'] != null && count($condi['id']) > 0 ? $condi['id'][0]:null,
+                                        'qq_id' => $condi['conQqID'][0],
+                                        'math_symbol_id' => $condi['conSymbol'],
+                                        'qa_id' => null,
+                                        'qa_value' => $condi['conAnsValue'],
+                                        'qa_any' => 0,
+                                        'condition_id' => 'C'.($i + 1),
+                                        'quotation_id' => $quote->id,
+                                    ];
+                                }
 
                                 if($condi['id'] != null && count($condi['id']) > 0) {
                                     $ids = $condi['id'];
@@ -274,7 +368,6 @@ class QuotationController extends Controller
                         }
                     }
 
-                    
                     if(count($dumpUpdateConditions) > 0) {
                         QuotationCondition::upsert($dumpUpdateConditions, ['id'], ['qq_id', 'math_symbol_id', 'qa_id', 'condition_id', 'quotation_id']);
                     }
@@ -402,4 +495,5 @@ class QuotationController extends Controller
             return response()->json(0);
         }
     }
+
 }

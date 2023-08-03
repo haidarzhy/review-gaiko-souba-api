@@ -19,6 +19,8 @@ class CreateQuotationConditionsTable extends Migration
             $table->unsignedBigInteger('qq_id')->nullable();
             $table->unsignedBigInteger('math_symbol_id')->nullable();
             $table->unsignedBigInteger('qa_id')->nullable();
+            $table->boolean('qa_any')->default(0);
+            $table->unsignedBigInteger('qa_value')->nullable();
             $table->unsignedBigInteger('quotation_id')->nullable();
             $table->timestamps();
 

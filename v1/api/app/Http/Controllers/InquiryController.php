@@ -181,6 +181,8 @@ class InquiryController extends Controller
                         $conditionQIndex = 'Q'.$qc->qq->qindex;
                         $conditionQqId = $qc->qq_id;
                         $conditionAnsId = $qc->qa_id;
+                        $conditionAnsValue = $qc->qa_value;
+                        $conditionAnsAny = $qc->qa_any;
                         $conditionMathSymbol = $qc->mathSymbol;
 
                         if(!array_key_exists($conditionKey, $conditionResultArray)) {
@@ -198,22 +200,47 @@ class InquiryController extends Controller
                                 // loop filtered data
                                 foreach($filteredData as $fD) {
 
-                                    // check all required fields
-                                    if($conditionQqId != null && $conditionAnsId != null && $conditionMathSymbol != null && isset($fD['qId']) && $fD['qId'] != null && isset($fD['ansId']) && $fD['ansId'] != null) {
+                                    if($conditionAnsId != null) { // normal answer
+                                        // check all required fields
+                                        if($conditionQqId != null && $conditionAnsId != null && $conditionMathSymbol != null && isset($fD['qId']) && $fD['qId'] != null && isset($fD['ansId']) && $fD['ansId'] != null) {
 
-                                        if(is_array($fD['ansId'])) { // check ansId is array or not
+                                            if(is_array($fD['ansId'])) { // check ansId is array or not
 
-                                            foreach($fD['ansId'] as $fd) {
+                                                foreach($fD['ansId'] as $fd) {
 
-                                                if(is_numeric($fd)) {
+                                                    if(is_numeric($fd)) {
 
-                                                    $conditionAsString = $conditionAnsId.' '.$conditionMathSymbol->sign.' '.$fd;
+                                                        $conditionAsString = $conditionAnsId.' '.$conditionMathSymbol->sign.' '.$fd;
+                                                        
+                                                    } else {
+
+                                                        $replacement = "false";
+                                                        $conditionAsString = $conditionAnsId.' '.$conditionMathSymbol->sign.' '.$replacement;
+            
+                                                    }
+
+                                                    try {
+                                                        $result = eval("return $conditionAsString;");
+                                                    } catch (ParseError $e) {
+                                                        return response()->json('POS - 1.0:'.$e->getMessage());
+                                                    }
+                                                    if(isset($conditionKey) && isset($conditionResultArray[$conditionKey])) {
+                                                        $conditionResultArray[$conditionKey][] = $result;
+                                                    }
+
+                                                }
+
+                                            } else {
+
+                                                if(is_numeric($fD['ansId'])) {
+
+                                                    $conditionAsString = $conditionAnsId.' '.$conditionMathSymbol->sign.' '.$fD['ansId'];
                                                     
                                                 } else {
 
                                                     $replacement = "false";
                                                     $conditionAsString = $conditionAnsId.' '.$conditionMathSymbol->sign.' '.$replacement;
-        
+
                                                 }
 
                                                 try {
@@ -229,17 +256,14 @@ class InquiryController extends Controller
 
                                         } else {
 
-                                            if(is_numeric($fD['ansId'])) {
+                                            $conditionResultArray[$conditionKey][] = false;
 
-                                                $conditionAsString = $conditionAnsId.' '.$conditionMathSymbol->sign.' '.$fD['ansId'];
-                                                
-                                            } else {
+                                        }
+                                    } else if($conditionAnsValue != null) { // text input
+                                        // check all required fields
+                                        if($conditionQqId != null && $conditionAnsValue != null && $conditionMathSymbol != null && isset($fD['qId']) && $fD['qId'] != null && isset($fD['ans']) && $fD['ans'] != null) {
 
-                                                $replacement = "false";
-                                                $conditionAsString = $conditionAnsId.' '.$conditionMathSymbol->sign.' '.$replacement;
-
-                                            }
-
+                                            $conditionAsString = $fD['ans'].' '.$conditionMathSymbol->sign.' '.$conditionAnsValue;
                                             try {
                                                 $result = eval("return $conditionAsString;");
                                             } catch (ParseError $e) {
@@ -249,12 +273,22 @@ class InquiryController extends Controller
                                                 $conditionResultArray[$conditionKey][] = $result;
                                             }
 
+                                        } else {
+
+                                            $conditionResultArray[$conditionKey][] = false;
+
                                         }
+                                    } else if($conditionAnsAny == 1) { // any
+                                        // check all required fields
+                                        if($conditionQqId != null && $conditionAnsAny != null && $conditionMathSymbol != null && isset($fD['qId']) && $fD['qId'] != null && isset($fD['ansId']) && $fD['ansId'] != null) {
 
-                                    } else {
+                                            $conditionResultArray[$conditionKey][] = true;
 
-                                        $conditionResultArray[$conditionKey][] = false;
+                                        } else {
 
+                                            $conditionResultArray[$conditionKey][] = false;
+
+                                        }
                                     }
 
                                 }
