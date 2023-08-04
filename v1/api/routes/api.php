@@ -90,6 +90,11 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/quotation/{id}/update', 'App\Http\Controllers\QuotationController@update');
     Route::delete('/quotation/{id}/destroy', 'App\Http\Controllers\QuotationController@destroy');
 
+    // UNIT PRICE API
+    Route::get('/unit-price', 'App\Http\Controllers\UnitPriceController@index');
+    Route::post('/unit-price/store', 'App\Http\Controllers\UnitPriceController@store');
+    Route::delete('/unit-price/{id}/destroy', 'App\Http\Controllers\UnitPriceController@destroy');
+
     // INQUIRY API
     Route::get('inquiry', 'App\Http\Controllers\InquiryController@index');
     Route::get('inquiry/get-all', 'App\Http\Controllers\InquiryController@getAll');

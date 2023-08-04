@@ -166,8 +166,6 @@ class InquiryController extends Controller
                 $formulaResultArray = [];
                 $formulaConditionResult = false;
                 $formulaTotalResult = 0;
-                $quotationCalculationResult = 0;
-
 
                 // check quotation has condition or not
                 if(count($qcs) > 0) {
@@ -767,7 +765,7 @@ class InquiryController extends Controller
                         $dumpTotalResult += $value;
                     }
                     $formulaTotalResult = $dumpTotalResult;
-                }
+                } 
 
                 // Calculate quotation total amount
                 if($conditionResult) {
@@ -793,9 +791,8 @@ class InquiryController extends Controller
                 // create a inquiry if condition is true
                 if($conditionResult) {
                     
-
                     // create a dump object to store
-                    if($quotation->id == 1) { // check the quotation is area or not
+                    if($quotation->id == 1 || $qBaseAmount > 1) { // check the quotation is area or not
 
                         array_push($quotationStoreData, [
                             'quotation_id' => $quotation->id,
@@ -806,6 +803,7 @@ class InquiryController extends Controller
                             'created_at' => $currentTimestamp,
                             'updated_at' => $currentTimestamp
                         ]);
+
 
                     } else if($formulaTotalResult > 0 && $quotationCalculationResult > 0) {
 

@@ -280,12 +280,12 @@ class QuotationController extends Controller
                             if(count($condi['conQqID']) > 1) { //multiple question
                                 for ($j=0; $j < count($condi['conQqID']); $j++) { 
                                     $label = $condi['conAnsID']['label'];
-                                    $label = $condi['conAnsID']['label'];
                                     if($label != "どれでも") {
                                         $ansID = Qa::where('label', $label)->where('qq_id', $condi['conQqID'][$j])->first();
                                         if($ansID) {
+                                            
                                             $dumpQCondition = [
-                                                'id' => $condi['id'] != null && count($condi['id']) > $j ? $condi['id'][$j]:null,
+                                                'id' => isset($condi['id']) && $condi['id'] != null && count($condi['id']) > $j ? $condi['id'][$j]:null,
                                                 'qq_id' => $condi['conQqID'][$j],
                                                 'math_symbol_id' => $condi['conSymbol'],
                                                 'qa_id' => $ansID->id,
@@ -298,7 +298,7 @@ class QuotationController extends Controller
                                         }
                                     } else {
                                         $dumpQCondition = [
-                                            'id' => $condi['id'] != null && count($condi['id']) > $j ? $condi['id'][$j]:null,
+                                            'id' => isset($condi['id']) && $condi['id'] != null && count($condi['id']) > $j ? $condi['id'][$j]:null,
                                             'qq_id' => $condi['conQqID'][$j],
                                             'math_symbol_id' => $condi['conSymbol'],
                                             'qa_id' => null,
@@ -311,7 +311,7 @@ class QuotationController extends Controller
                                     }
                                 }
 
-                                if($condi['id'] != null && count($condi['id']) > 0) {
+                                if(isset($condi['id']) && $condi['id'] != null && count($condi['id']) > 0) {
                                     $ids = $condi['id'];
                                     QuotationCondition::where('quotation_id', $quote->id)
                                         ->whereNotIn('id', $condi['id'])
@@ -322,7 +322,7 @@ class QuotationController extends Controller
                                 if(isset($condi['conAnsID']) && $condi['conAnsID'] != null) {
                                     if($condi['conAnsID']['label'] == 'どれでも') {
                                         $dumpQCondition = [
-                                            'id' => $condi['id'] != null && count($condi['id']) > 0 ? $condi['id'][0]:null,
+                                            'id' => isset($condi['id']) && $condi['id'] != null && count($condi['id']) > 0 ? $condi['id'][0]:null,
                                             'qq_id' => $condi['conQqID'][0],
                                             'math_symbol_id' => $condi['conSymbol'],
                                             'qa_id' => null,
@@ -331,9 +331,10 @@ class QuotationController extends Controller
                                             'condition_id' => 'C'.($i + 1),
                                             'quotation_id' => $quote->id,
                                         ];
+
                                     } else {
                                         $dumpQCondition = [
-                                            'id' => $condi['id'] != null && count($condi['id']) > 0 ? $condi['id'][0]:null,
+                                            'id' => isset($condi['id']) && $condi['id'] != null && count($condi['id']) > 0 ? $condi['id'][0]:null,
                                             'qq_id' => $condi['conQqID'][0],
                                             'math_symbol_id' => $condi['conSymbol'],
                                             'qa_id' => $condi['conAnsID']['value'],
@@ -345,7 +346,7 @@ class QuotationController extends Controller
                                     }
                                 } else {
                                     $dumpQCondition = [
-                                        'id' => $condi['id'] != null && count($condi['id']) > 0 ? $condi['id'][0]:null,
+                                        'id' => isset($condi['id']) && $condi['id'] != null && count($condi['id']) > 0 ? $condi['id'][0]:null,
                                         'qq_id' => $condi['conQqID'][0],
                                         'math_symbol_id' => $condi['conSymbol'],
                                         'qa_id' => null,
@@ -356,22 +357,28 @@ class QuotationController extends Controller
                                     ];
                                 }
 
-                                if($condi['id'] != null && count($condi['id']) > 0) {
+                                if(isset($condi['id']) && $condi['id'] != null && count($condi['id']) > 0) {
                                     $ids = $condi['id'];
                                     QuotationCondition::where('quotation_id', $quote->id)
                                         ->whereNotIn('id', $condi['id'])
                                         ->delete();
                                 }
-
                                 array_push($dumpUpdateConditions, $dumpQCondition);
                             }
                         }
                     }
 
                     if(count($dumpUpdateConditions) > 0) {
-                        QuotationCondition::upsert($dumpUpdateConditions, ['id'], ['qq_id', 'math_symbol_id', 'qa_id', 'condition_id', 'quotation_id']);
+                        try {
+                            QuotationCondition::upsert($dumpUpdateConditions, ['id'], ['qq_id', 'math_symbol_id', 'qa_id', 'condition_id', 'quotation_id']);
+                        } catch (QueryException $e) {
+                            return response()->json($e->getMessage());
+                        }
                     }
+                } else {
+                    QuotationCondition::where('quotation_id', $quote->id)->delete();
                 }
+
 
                     // update formula
                     $fIDs = [];
