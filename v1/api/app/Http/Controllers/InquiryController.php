@@ -795,7 +795,7 @@ class InquiryController extends Controller
                     
 
                     // create a dump object to store
-                    if($quotation->id == 1) { // check the quotation is area or not
+                    if($quotation->id == 1 || $qBaseAmount > 1) { // check the quotation is area or not
 
                         array_push($quotationStoreData, [
                             'quotation_id' => $quotation->id,
