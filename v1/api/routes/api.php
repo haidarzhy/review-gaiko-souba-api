@@ -103,6 +103,12 @@ Route::middleware(['auth:sanctum'])->group(function () {
     // DASHBOARD API
     Route::get('/dashboard', 'App\Http\Controllers\DashboardController@index');
 
+
+    // MAINTENANCE API
+    Route::get('/maintenance/{id}/detail', 'App\Http\Controllers\MaintenanceController@show');
+    Route::put('/maintenance/{id}/update', 'App\Http\Controllers\MaintenanceController@update');
+
+
 });
 
 // CP SETTING
