@@ -31,6 +31,7 @@ return [
         'http://app-com.localhost:5175', 
         'http://app-com.localhost:5174', 
         'http://app-cp.localhost:5173', 
+        'http://app-cp.localhost:5174', 
     ],
 
     'allowed_origins_patterns' => [],
