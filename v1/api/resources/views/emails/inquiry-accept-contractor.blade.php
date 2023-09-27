@@ -200,9 +200,7 @@
 <body>
     <div class="mail-wrap">
         <div class="mail-wrap-inn">
-            <h3>お問い合わせ受付中！</h3>
-            <p>これらの情報を含むアンケートに同意しました。 さらにご不明な点がございましたら、お客様までお問い合わせください。</p>
-            <p> ご利用いただきありがとうございます。</p>
+            <div>{!! $text !!}</div>
             <div class="result">
                 <dl>
                     <dt>合計</dt>

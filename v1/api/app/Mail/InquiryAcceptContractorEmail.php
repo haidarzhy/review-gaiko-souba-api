@@ -11,7 +11,7 @@ class InquiryAcceptContractorEmail extends Mailable
 {
     use Queueable, SerializesModels;
 
-    public $inquiry, $subject;
+    public $inquiry, $subject, $text;
 
     /**
      * Create a new message instance.
@@ -22,6 +22,7 @@ class InquiryAcceptContractorEmail extends Mailable
     {   
         $this->inquiry = $mailData['inquiry'];
         $this->subject = $mailData['subject'];
+        $this->text = $mailData['text'];
     }
 
     /**
@@ -33,6 +34,7 @@ class InquiryAcceptContractorEmail extends Mailable
     {
         return $this->subject($this->subject)->view('emails.inquiry-accept-contractor')->with([
             'inquiry' => $this->inquiry,
+            'text' => $this->text
         ]);
     }
 }

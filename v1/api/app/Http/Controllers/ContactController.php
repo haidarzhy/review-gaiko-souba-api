@@ -6,6 +6,7 @@ use App\Models\User;
 use GuzzleHttp\Client;
 use App\Models\Contact;
 use App\Mail\ContactEmail;
+use App\Models\MailSetting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Database\QueryException;
@@ -99,9 +100,12 @@ class ContactController extends Controller
 
         $contact = Contact::create($contactData);
         if($contact) {
+            // fetch mail data
+            $mailSetting = MailSetting::where('mail', 'contact')->first();
             $mailData = [
                 'name' => $contact->name,
-                'subject' => 'ご連絡いただきありがとうございます'
+                'subject' => $mailSetting->subject,
+                'text' => $mailSetting->text
             ];
 
             try {

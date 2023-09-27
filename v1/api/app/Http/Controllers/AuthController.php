@@ -176,12 +176,15 @@ class AuthController extends Controller
                 }
             }
 
+            // fetch mail data
+            $mailSetting = MailSetting::where('mail', 'register')->first();
             $mailData = [
                 'name' => $user->name,
                 'password' => $data['password'],
                 'plan' => $data['plan'],
                 'price' => $data['price'],
-                'subject' => '登録が確認されました！'
+                'subject' => $mailSetting->subject,
+                'text' => $mailSetting->text
             ];
 
             try {

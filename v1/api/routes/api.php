@@ -108,6 +108,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/maintenance/{id}/detail', 'App\Http\Controllers\MaintenanceController@show');
     Route::put('/maintenance/{id}/update', 'App\Http\Controllers\MaintenanceController@update');
 
+    // MAILSETTING API
+    Route::get('/mail-settings', 'App\Http\Controllers\MailSettingController@index');
+    Route::put('/mail-settings/{id}/update', 'App\Http\Controllers\MailSettingController@update');
 
 });
 
@@ -142,6 +145,9 @@ Route::post('/u/questionnaires/store', 'App\Http\Controllers\QuestionnaireContro
 Route::post('/u/questionnaires/calculate', 'App\Http\Controllers\InquiryController@calculate');
 Route::get('/u/inquiry/{uuid}/detail', 'App\Http\Controllers\InquiryController@show');
 Route::post('/u/inquiry/{uuid}/update', 'App\Http\Controllers\InquiryController@update');
+
+// MAINTENANCE API
+Route::get('/u/maintenance/{id}/detail', 'App\Http\Controllers\MaintenanceController@show');
 
 
 Route::get('/clear-cache', function (Request $request) {

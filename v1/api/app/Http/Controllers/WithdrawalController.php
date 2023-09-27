@@ -89,14 +89,16 @@ class WithdrawalController extends Controller
             ];  
             $w = Withdrawal::create($wData);
             if($w) {
-
+                // fetch mail data
+                $mailSetting = MailSetting::where('mail', 'withdrawal')->first();
                 // send mail
                 $mailData = [
                     'user' => $w->user,
                     'reason' => $w->leaving_reason->name,
                     'diff_email' => '',
                     'r_email' => $w->email,
-                    'subject' => '退会申請を受付ました!'
+                    'subject' => $mailSetting->subject,
+                    'text' => $mailSetting->text
                 ];
 
 

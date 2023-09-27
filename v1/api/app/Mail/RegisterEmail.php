@@ -11,7 +11,7 @@ class RegisterEmail extends Mailable
 {
     use Queueable, SerializesModels;
 
-    public $name, $password, $plan, $price, $subject;
+    public $name, $password, $plan, $price, $subject, $text;
 
     /**
      * Create a new message instance.
@@ -25,6 +25,7 @@ class RegisterEmail extends Mailable
         $this->plan = $mailData['plan'];
         $this->price = $mailData['price'];
         $this->subject = $mailData['subject'];
+        $this->text = $mailData['text'];
     }
 
     /**
@@ -39,6 +40,7 @@ class RegisterEmail extends Mailable
                         'password' => $this->password,
                         'plan' => $this->plan,
                         'price' => $this->price,
+                        'text' => $this->text
                     ]);
     }
 }

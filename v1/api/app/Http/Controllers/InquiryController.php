@@ -10,6 +10,7 @@ use Carbon\Carbon;
 use App\Models\User;
 use App\Models\Inquiry;
 use App\Models\Quotation;
+use App\Models\MailSetting;
 use Illuminate\Support\Str;
 use App\Models\InquiryQaAns;
 use App\Models\InquiryQuote;
@@ -1017,11 +1018,13 @@ class InquiryController extends Controller
 
         if($inquiry) {
             $inq = Inquiry::with(['inquiryQuotes'])->where('uuid', $uuid)->first();
-
+            // fetch mail data
+            $mailSetting = MailSetting::where('mail', 'inquiry-thankyou')->first();
             // send mail
             $mailData = [
                 'inquiry' => $inq,
-                'subject' => '掲載完了しました！'
+                'subject' => $mailSetting->subject,
+                'text' => $mailSetting->text
             ];
 
             try {
@@ -1057,13 +1060,16 @@ class InquiryController extends Controller
             if($inquiry->user) {
 
                 try {
+                    // fetch mail data
+                    $mailSetting = MailSetting::where('mail', 'inquiry-user')->first();
                     $mailData = [
                         'name' => $inquiry->user->name,
                         'company_name' => $inquiry->user->company_name,
                         'address01' => $inquiry->user->address01,
                         'address02' => $inquiry->user->address02,
                         'url' => $inquiry->user->url != null ? $inquiry->user->url:' ',
-                        'subject' => 'お問い合わせ受付中！'
+                        'subject' => $mailSetting->subject,
+                        'text' => $mailSetting->text
                     ];
 
                     try {
@@ -1089,9 +1095,12 @@ class InquiryController extends Controller
 
                 // send mail to contractor
                 try {
+                    // fetch mail data
+                    $mailSetting = MailSetting::where('mail', 'inquiry-contractor')->first();
                     $mailData2 = [
                         'inquiry' => $inquiry,
-                        'subject' => 'お問い合わせ受付中！'
+                        'subject' => $mailSetting->subject,
+                        'text' => $mailSetting->text
                     ];
 
                     try {

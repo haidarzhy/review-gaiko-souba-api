@@ -115,31 +115,7 @@
     <div class="mail-wrap">
         <div class="mail-wrap-inn">
             <h2>こんにちは、{{ $name }}様！</h2>
-            <h3>おめでとうございます！ <br class="sp">登録が確認されました！</h3>
-            <p>
-                外構相場.comへの登録が完了しました。<br>
-                これで、ログイン画面にアクセスして<br class="sp">注文のリストを確認できる<br class="sp">ようになりました。<br>
-                登録したメールアドレスとパスワードを<br class="sp">使用してログイン画面に<br class="sp">アクセスしてください。
-            </p>
-            <p class="password">{{ $password }}</p>
-            <div class="button">
-                <a href="https://gaiko-souba-net.icdl.tokyo/sign-in" rel="noopener noreferrer" target="_blank">ログイン画面にアクセスする</a>
-            </div>
-            <h3>これがあなたの加入プランです。</h3>
-            <p>タイプ - {{ $plan }}</p>
-            <p>お支払い - {{ $price }}</p>
-            <p class="align-left">ご質問やご不明な点がございましたら、info@gaiko-souba.net または 050-3825-7567 まで<br>お気軽にお問い合わせください。</p>
-        
-            <div class="contact-address align-left">
-                <p>
-                    <br>外構相場.com
-                    <br>info@gaiko-souba.net
-                    <br>050-3825-7567
-                    <br>〒491-0827 
-                    <br>愛知県 一宮市
-                    <br>三ツ井4丁目16番15号
-                </p>
-            </div>
+            <div>{!! $text !!}</div>
         </div>
     </div>
 </body>

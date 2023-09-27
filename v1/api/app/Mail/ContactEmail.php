@@ -11,7 +11,7 @@ class ContactEmail extends Mailable
 {
     use Queueable, SerializesModels;
 
-    public $name, $subject;
+    public $name, $subject, $text;
 
     /**
      * Create a new message instance.
@@ -22,6 +22,7 @@ class ContactEmail extends Mailable
     {
         $this->name = $mailData['name'];
         $this->subject = $mailData['subject'];
+        $this->text = $mailData['text'];
     }
 
     /**
@@ -33,6 +34,7 @@ class ContactEmail extends Mailable
     {
         return $this->subject($this->subject)->view('emails.contact')->with([
                         'name' => $this->name,
+                        'text' => $this->text
                     ]);
     }
 }

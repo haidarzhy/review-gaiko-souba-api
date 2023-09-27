@@ -11,7 +11,7 @@ class InquiryAcceptUserEmail extends Mailable
 {
     use Queueable, SerializesModels;
 
-    public $user_name, $user_company_name, $user_address01, $user_address02, $user_url, $subject;
+    public $user_name, $user_company_name, $user_address01, $user_address02, $user_url, $subject, $text;
 
     /**
      * Create a new message instance.
@@ -26,6 +26,7 @@ class InquiryAcceptUserEmail extends Mailable
         $this->user_address02 = $mailData['address02'];
         $this->user_url = isset($mailData['url']) ? $mailData['url']:'';
         $this->subject = $mailData['subject'];
+        $this->text = $mailData['text'];
     }
 
     /**
@@ -41,6 +42,7 @@ class InquiryAcceptUserEmail extends Mailable
             'address01' => $this->user_address01,
             'address02' => $this->user_address02,
             'url' => $this->user_url,
+            'text' => $this->text
         ]);
     }
 }

@@ -106,9 +106,7 @@
     <div class="mail-wrap">
         <div class="mail-wrap-inn">
             <h2>こんにちは、{{ $name }}様！</h2>
-            <h3>送信完了しました。</h3>
-            <p>この度は、お問い合わせいただき誠にありがとうございます。<br>
-                2営業日以内に、担当者からお返事いたします。</p>
+            <div>{!! $text !!}</div>
             <div class="button">
                 <a href="https://gaiko-souba-net.icdl.tokyo/" rel="noopener noreferrer" target="_blank">ホームへ戻る</a>
             </div>

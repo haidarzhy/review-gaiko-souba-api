@@ -106,20 +106,7 @@
     <div class="mail-wrap">
         <div class="mail-wrap-inn">
             <h2>こんにちは、{{ $user->name }}様！</h2>
-            <h3>退会申請を受付ました。</h3>
-            <p>
-                「{{ $reason }}」ということで申し訳ございませんでしたが、<br>
-                今後はより良いものを提供できるよう努めてまいります。
-            </p>
-            @if($diffEmail != '')
-                <p>{{ $diffEmail }}</p>
-                <p>出金依頼メール - {{ $rEmail }}</p>
-            @endif
-            <p>
-                1週間以内を目処にこちらから<br>
-                退会処理のご連絡をさせていただきます。<br>
-                外構相場.comをご利用いただきまして誠にありがとうございます。
-            </p>
+            <div>{!! $text !!}</div>
             <div class="button">
                 <a href="https://gaiko-souba-net.icdl.tokyo/" rel="noopener noreferrer" target="_blank">ホームへ戻る</a>
             </div>

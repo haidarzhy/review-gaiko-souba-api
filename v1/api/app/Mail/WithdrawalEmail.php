@@ -10,7 +10,7 @@ use Illuminate\Queue\SerializesModels;
 class WithdrawalEmail extends Mailable
 {
     use Queueable, SerializesModels;
-    public $user, $reason, $diffEmail, $rEmail, $subject;
+    public $user, $reason, $diffEmail, $rEmail, $subject, $text;
 
     /**
      * Create a new message instance.
@@ -24,6 +24,7 @@ class WithdrawalEmail extends Mailable
         $this->diffEmail = $mailData['diff_email'];
         $this->rEmail = $mailData['r_email'];
         $this->subject = $mailData['subject'];
+        $this->text = $mailData['text'];
     }
 
     /**
@@ -38,6 +39,7 @@ class WithdrawalEmail extends Mailable
             'reason' => $this->reason,
             'diffEmail' => $this->diffEmail,
             'rEmail' => $this->rEmail,
+            'text' => $this->text
         ]);
     }
 }

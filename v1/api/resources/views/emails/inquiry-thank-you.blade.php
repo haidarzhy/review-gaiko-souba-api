@@ -199,12 +199,7 @@
 <body>
     <div class="mail-wrap">
         <div class="mail-wrap-inn">
-            <h2>掲載完了しました。</h2>
-            <p>掲載期間は10日間となります。<br>
-                ご近所で対応可能な施工店様が見つかりましたら、<br class="pc">
-                ご記載のメールアドレス宛に<br class="sp">ご連絡させていただきます。<br>
-                なお掲載期間が終了したお見積り情報に関しましては、<br class="pc">
-                順次消去させていただきますのでよろしくお願いいたします。</p>
+            <div>{!! $text !!}</div>
             <div class="result">
                 <dl>
                     <dt>合計</dt>

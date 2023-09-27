@@ -102,8 +102,7 @@
 <body>
     <div class="mail-wrap">
         <div class="mail-wrap-inn">
-            <h3>あなたの依頼は施工業者によって受理されましたので、<br>
-                施工業者の情報を確認し、連絡をお願い致します。</h3>
+            <div>{!! $text !!}</div>
             <p>会社名/屋号: {{ $company_name }}</p>
             <p>担当者名: {{ $name }}</p>
             <p>住所: {{ $address01 }}  {{ $address02 }}</p>
